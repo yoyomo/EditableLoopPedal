@@ -41,10 +41,7 @@ void initializeTimer(){
 void initializePorts(){
     TRISBbits.TRISB0 = 1;
     ADPCFGbits.PCFG0 = 0;   //RB0 as analog input
-     
-   // TRISBbits.TRISB1 = 0;
-   // LATBbits.LATB1 = 1;
-    
+         
     TRISBbits.TRISB9 = 0;
     TRISBbits.TRISB8 = 0;
     TRISBbits.TRISB7 = 0;
@@ -114,10 +111,8 @@ void configureADC(){
             Cleared by software or start of a new conversion.*/
     ADCON1bits.ADSIDL=0;
     ADCON1bits.FORM=0;
-    ADCON1bits.SSRC=7;      //Clear SAMP bit to Convert
-    //at end od initialization do this  ADCON1bits.ASAM=1;
+    ADCON1bits.SSRC=7;      
     ADCON1bits.SAMP=1;
-    //at end od initialization do this ADCON1bits.ADON=1;
     /*
     ADCON2:
     bit 15-13 VCFG<2:0>: Voltage Reference Configuration bits
@@ -153,9 +148,7 @@ void configureADC(){
             0 = Always use MUX A input multiplexer settings*/
     ADCON2bits.VCFG=7;
     ADCON2bits.CSCNA=1;
-    ADCON2bits.SMPI=1;/*The SMPI bits select the number of acquisition/conversion sequences that would be
-                       *  performed before an interrupt occurs. This can vary from 1 sample per interrupt
-                       *  to 16 samples per interrupt.*/
+    ADCON2bits.SMPI=1;
     ADCON2bits.BUFM=0;
     ADCON2bits.ALTS=0;
     /*
@@ -210,7 +203,8 @@ void configureADC(){
     bit 15-0 CSSL<15:0>: A/D Input Pin Scan Selection bits
             1 = Select ANx for input scan
             0 = Skip ANx for input scan*/
-    //ADCSSL=0b0001111111111111;  //all adcs are ON
+   
+    
     ADCSSL=0b0000000000000001;  //RB0 as ADC input
     ADCON1bits.ASAM=1;
     IFS0bits.ADIF=1;
