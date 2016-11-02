@@ -1,5 +1,5 @@
 /* 
- * File:   main.c
+ * Editable Loop Pedal, a project for the Embedded Systems Design (ICOM4217) course, using a dsPIC30F4013.
  * Author: Jose Rodriguez, Armando Ortiz, Edgardo Acosta
  *
  */
