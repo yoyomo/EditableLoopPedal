@@ -1,8 +1,7 @@
 /* 
  * File:   main.c
- * Author: Jose Antonio Rodriguez Rivera
+ * Author: Jose Rodriguez, Armando Ortiz, Edgardo Acosta
  *
- * Created on October 29, 2016, 5:15 PM
  */
 
 #include <stdio.h>
@@ -10,7 +9,7 @@
 #include <p30f4013.h>
 #define SPACE_LIMIT 500
 
-
+//Global Variables
 int data12bit, data8bit, mixedSignal;
 int recording, recorded;
 int recordedSignal[SPACE_LIMIT];
@@ -18,30 +17,56 @@ int sampleIndex = 0;
 int play = 0;
 int endIndex = 0;
 
+//Variable used for Timer Period calculation
 const int CLOCK_FREQ = 31250;
 
 
+/**
+ * Sets the timer period. Used for counting time passed.
+ * @param period the period of the signal (the time to be counted)
+ */
 void setTimerPeriod(int period){
-   
+    /*Calculate the PR1 value equivalent to the desired timer period, taking
+     * into account the dsPIC operating frequency*/
     PR1 = (period * (CLOCK_FREQ/4));
 }
 
+/**
+ * Initializes LCD
+ */
 void initializeLCD(){
-  
+  //To be Completed
 }
 
+/**
+ * Initializes the timer module.
+ */
 void initializeTimer(){
+    //Reset the timer module
     T1CON = 0;
+    
+    //Prescaler set to 256 (clock source = 31.25kHz)
     T1CONbits.TCKPS = 3;
+    
+    /*Set the timer period for counting purposes. Used as the record time
+    limit (1 second for now)*/
     setTimerPeriod(1);
+    
+    //Clear timer interrupt flag, and enables the timer interrupt
     _T1IF = 0;
     _T1IE = 1;
 }
 
+/**
+ * Initializes all the I/O ports to be used in this program.
+ */
 void initializePorts(){
+    //Configure RB0 as an Analog Input
     TRISBbits.TRISB0 = 1;
-    ADPCFGbits.PCFG0 = 0;   //RB0 as analog input
+    ADPCFGbits.PCFG0 = 0;   
          
+    /*Configure 8 output pins for the Digital-to-Analog Converter (might be 
+    more later)*/
     TRISBbits.TRISB9 = 0;
     TRISBbits.TRISB8 = 0;
     TRISBbits.TRISB7 = 0;
@@ -51,17 +76,19 @@ void initializePorts(){
     TRISBbits.TRISB3 = 0;
     TRISBbits.TRISB2 = 0;
     
-    //LEDs
+    //Configure 2 output pins for the Record and Play/Pause LEDs.
     TRISFbits.TRISF0 = 0;
     TRISFbits.TRISF1 = 0;
        
-    //Rec button
+    /*Configure a digital input, and enable interrupts on the pin 
+     (negative edge triggered) -> Record button*/
     TRISDbits.TRISD8 = 1;
     _INT1EP = 1;
     _INT1IF = 0;
     _INT1IE = 1;
     
-    //Play/Pause button
+    /*Configure a digital input, and enable interrupts on the pin 
+     (negative edge triggered) -> Play/Pause button*/
     TRISDbits.TRISD9 = 1;
     _INT2EP = 1;
     _INT2IF = 0;
@@ -71,6 +98,9 @@ void initializePorts(){
     
 }
 
+/**
+ * Configures the built-in Analog-to-Digital Converter.
+ */
 void configureADC(){
        /*ADCON1:
     bit 15 ADON: A/D Operating Mode bit
@@ -212,10 +242,15 @@ void configureADC(){
 }
 
 
-
+/**
+ * Interrupt Service Routine for the Record button.
+ */
 void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
 {
+    //Turn off interrupt flag
       _INT1IF = 0;      
+      
+    //If the system was recording, set flags to stop recording and play the recorded track.
     if(recording == 1){
        recording = 0;
      sampleIndex = 0;
@@ -226,6 +261,7 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
      //T1CONbits.TON = 0;  
     }
     else{
+        //Set flags for recording, and reset the timer
         recording = 1;
         LATFbits.LATF0 = 1;
         TMR1 = 0x00;
@@ -234,16 +270,29 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
     }
 }
 
+/**
+ * Interrupt Service Routine for the Play/Pause button.
+ */
 void __attribute__((interrupt,no_auto_psv)) _INT2Interrupt( void )
 {
-     _INT2IF = 0;      
+    //Turn off the interrupt
+    _INT2IF = 0;      
+     
+    //Toggle the Play/Pause status, and the corresponding LED
     play ^= 0x01; 
     LATFbits.LATF1 = ~LATFbits.LATF1;
 }
 
+/**
+ * Interrupt Service Routine for the Timer module.
+ */
 void __attribute__((interrupt,no_auto_psv)) _T1Interrupt( void )
 {
+    //Turn off interrupt flag
     _T1IF = 0;   
+    
+    /*If recording, time limit has been reached. Set flags to stop recording 
+     and play the recorded signal*/
     if(recording == 1){
     recording = 0;
      sampleIndex = 0;
@@ -256,36 +305,48 @@ void __attribute__((interrupt,no_auto_psv)) _T1Interrupt( void )
     
 }
 
+/**
+ * Interrupt Service Routine for the Analog-to-Digital Converter sampling/converting process.
+ */
 void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
 {
-     data12bit = ADCBUF0; //RB3  respect order RB0, RB1..etc, if not used skip it but ADCBUFs are ordered
+    //Read a sample of the analog input from the ADC buffer
+     data12bit = ADCBUF0; 
   
+     //If the system is recording, save the signal to internal memory.
     if(recording == 1){
         recordedSignal[sampleIndex] = data12bit;
         sampleIndex = (sampleIndex+1)%SPACE_LIMIT;
         endIndex++;
 
     }
+    
+    /*If there is a signal recorded, and the Play button is activated, mix both the
+     recorded signal and the input signal*/
     if(recorded == 1 && play == 1){
         //Mixing
         mixedSignal = recordedSignal[sampleIndex] + data12bit;
         sampleIndex = (sampleIndex+1)%SPACE_LIMIT;
         
     }
+     
+    //If not recording, and nothing has been recorded yet, bypass the input signal.
     else
         mixedSignal = data12bit;
     
-    //Output
+    //Output the digital signal to the DAC (converting 12-bit to 8-bit, might be changed later)
     data8bit = (int)(mixedSignal * (255.0/4095.0));
     LATB = (data8bit << 2);
     
 
-            
-    IFS0bits.ADIF = 0;  //After conversion ADIF is set to 1 and must be cleared
+    //Turn off interrupt flag
+    IFS0bits.ADIF = 0;  
     
 }
 
 /*
+ * Main function of the program.
+ * 
  * Pins:
  * RD8 -> Rec Button
  * RD9 -> Play/Pause
@@ -295,16 +356,21 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
  * RF1 -> LED Play/Pause
  */
 int main(int argc, char** argv) {
+    //Set ports and peripherals
     initializeLCD();
     initializeTimer();
     initializePorts();
     configureADC();
+    
+    //Turn on the timer module
     T1CONbits.TON = 1;
+    
+    //Turn on the ADC module
     ADCON1bits.ADON = 1;
    
     
     while(1){
-       //LCD Button Polling
+       //LCD Button Polling (To be completed)
         
     }
     return (EXIT_SUCCESS);
