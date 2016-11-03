@@ -77,8 +77,8 @@ void initializePorts(){
     TRISBbits.TRISB2 = 0;
     
     //Configure 2 output pins for the Record and Play/Pause LEDs.
-    TRISFbits.TRISF0 = 0;
-    TRISFbits.TRISF1 = 0;
+    TRISDbits.TRISD0 = 0;
+    TRISDbits.TRISD1 = 0;
        
     /*Configure a digital input, and enable interrupts on the pin 
      (negative edge triggered) -> Record button*/
@@ -255,15 +255,15 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
        recording = 0;
      sampleIndex = 0;
      recorded= 1;
-     LATFbits.LATF0 = 0;
+     LATDbits.LATD0 = 0;
      play = 1;
-     LATFbits.LATF1 = 1;
+     LATDbits.LATD1 = 1;
      //T1CONbits.TON = 0;  
     }
     else{
         //Set flags for recording, and reset the timer
         recording = 1;
-        LATFbits.LATF0 = 1;
+        LATDbits.LATD0 = 1;
         TMR1 = 0x00;
        T1CONbits.TON = 1;  
 
@@ -280,7 +280,7 @@ void __attribute__((interrupt,no_auto_psv)) _INT2Interrupt( void )
      
     //Toggle the Play/Pause status, and the corresponding LED
     play ^= 0x01; 
-    LATFbits.LATF1 = ~LATFbits.LATF1;
+    LATDbits.LATD1 = ~LATDbits.LATD1;
 }
 
 /**
@@ -297,9 +297,9 @@ void __attribute__((interrupt,no_auto_psv)) _T1Interrupt( void )
     recording = 0;
      sampleIndex = 0;
      recorded= 1;
-     LATFbits.LATF0 = 0;
+     LATDbits.LATD0 = 0;
      play = 1;
-     LATFbits.LATF1 = 1;
+     LATDbits.LATD1 = 1;
     }
      //T1CONbits.TON = 0;  
     

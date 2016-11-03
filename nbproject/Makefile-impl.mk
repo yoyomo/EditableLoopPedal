@@ -24,7 +24,7 @@ CLEAN_SUBPROJECTS=${CLEAN_SUBPROJECTS_${SUBPROJECTS}}
 
 
 # Project Name
-PROJECTNAME=EditableLoopPedal.X
+PROJECTNAME=EditableLoopPedal
 
 # Active Configuration
 DEFAULTCONF=default
