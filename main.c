@@ -7,7 +7,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <p30f4013.h>
+#include "LCD_4bits.h"
+
 #define SPACE_LIMIT 500
+
+//Delay Mod
+#define FOSC    (7372800ULL)
+#define FCY     (FOSC/2)
+#include <libpic30.h>
+
 
 //Global Variables
 int data12bit, data8bit, mixedSignal;
@@ -20,7 +28,18 @@ int endIndex = 0;
 //Variable used for Timer Period calculation
 const int CLOCK_FREQ = 31250;
 
-
+//Array for menu items
+char *menu[5] = {
+    "Empty Track",
+    "Recording...",
+    "Edit",
+    "Delete",
+    "Track "
+};
+int menuPointer;
+int recWritten;
+int trackWritten;
+int i;
 /**
  * Sets the timer period. Used for counting time passed.
  * @param period the period of the signal (the time to be counted)
@@ -36,6 +55,7 @@ void setTimerPeriod(int period){
  */
 void initializeLCD(){
   //To be Completed
+    initLCD();
 }
 
 /**
@@ -94,8 +114,9 @@ void initializePorts(){
     _INT2IF = 0;
     _INT2IE = 1;
     
-    
-    
+    /*Up/Down/Select Button Configuration*/
+    TRISDbits.TRISD2 = 1;
+    TRISDbits.TRISD3 = 1;
 }
 
 /**
@@ -262,6 +283,7 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
     }
     else{
         //Set flags for recording, and reset the timer
+        recorded = 0;
         recording = 1;
         LATDbits.LATD0 = 1;
         TMR1 = 0x00;
@@ -344,6 +366,16 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     
 }
 
+void updateMenuPointer(){
+    top();
+    for(i=0;i<menuPointer;i++){
+        bottom();
+    }
+    for(i=0;i<15;i++){
+        cursorRight();
+    }
+}
+
 /*
  * Main function of the program.
  * 
@@ -368,9 +400,47 @@ int main(int argc, char** argv) {
     //Turn on the ADC module
     ADCON1bits.ADON = 1;
    
+    clearDisplay();
+    writeMessage(menu[0]);
+    menuPointer = 0;
+    updateMenuPointer();
     
     while(1){
-       //LCD Button Polling (To be completed)
+        //LCD Button Polling (To be completed)
+        
+        // LCD Process #0
+        if(recording & ~recWritten){
+            clearDisplay();
+            writeMessage(menu[1]);
+            recWritten = 1;
+            trackWritten = 0;
+        }
+        
+        // LCD Process #1
+        else if(recorded & ~trackWritten){
+            clearDisplay();
+            writeMessage(menu[4]);
+            writeMessage("1");
+            menuPointer++;
+            trackWritten = 1;
+            recWritten = 0;
+        }
+        
+        //LCD button check
+        // Up
+        if(PORTDbits.RD2 == 0){
+            __delay_ms(30);
+            menuPointer--;
+            if(menuPointer<0) menuPointer = 0;
+            updateMenuPointer();
+        }
+        //Down
+        if(PORTDbits.RD3 == 0){
+            __delay_ms(30);
+            menuPointer++;
+            
+            updateMenuPointer();
+        }
         
     }
     return (EXIT_SUCCESS);

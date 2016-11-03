@@ -1,2 +1,3 @@
 build/default/debug/main.o:  \
-main.c 
+main.c  \
+LCD_4bits.h 
