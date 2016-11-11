@@ -24,6 +24,8 @@ int recordedSignal[SPACE_LIMIT];
 int sampleIndex = 0;
 int play = 0;
 int endIndex = 0;
+int bpm;
+double bpmRatio;
 
 //Variable used for Timer Period calculation
 const int CLOCK_FREQ = 31250;
@@ -81,9 +83,13 @@ void initializeTimer(){
  * Initializes all the I/O ports to be used in this program.
  */
 void initializePorts(){
-    //Configure RB0 as an Analog Input
+    //Configure RB10 as an Analog Input for Audio Signal
     TRISBbits.TRISB10 = 1;
-    ADPCFGbits.PCFG10 = 0;   
+    ADPCFGbits.PCFG10 = 0;
+    
+    //Configure RB11 as an Analog Input for BPM Signal
+    TRISBbits.TRISB11 = 1;
+    ADPCFGbits.PCFG11 = 0;
          
     /*Configure 8 output pins for the Digital-to-Analog Converter (might be 
     more later)*/
@@ -258,7 +264,7 @@ void configureADC(){
             0 = Skip ANx for input scan*/
    
     
-    ADCSSL=0b0000010000000000;  //RB0 as ADC input
+    ADCSSL=0b0000110000000000;  //RB10 as ADC input
     ADCON1bits.ASAM=1;
     IFS0bits.ADIF=1;
     IEC0bits.ADIE=1;
@@ -358,6 +364,12 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     else
         mixedSignal = data12bit;
     
+    //Get BPM value
+    bpm = ADCBUF1;
+    
+    //Apply BPM value
+    
+    
     //Output the digital signal to the DAC (converting 12-bit to 8-bit, might be changed later)
     data8bit = (int)(mixedSignal * (255.0/4095.0));
     LATB = data8bit;
@@ -432,7 +444,7 @@ int main(int argc, char** argv) {
             recWritten = 0;
         }
         
-        //LCD button check
+        /*//LCD button check
         // Up
         if(PORTDbits.RD2 == 0){
             __delay_ms(30);
@@ -447,7 +459,15 @@ int main(int argc, char** argv) {
             
             updateMenuPointer();
         }
+        */
         
+        bpmRatio = bpm / 2047.5;
+        char buffer[50];
+        sprintf(buffer,"%.2f",bpmRatio);
+        clearDisplay();
+        writeMessage(buffer);
+        
+    
     }
     return (EXIT_SUCCESS);
 }
