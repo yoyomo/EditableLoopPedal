@@ -13,8 +13,6 @@ Edgardo Acosta<br><br>
 
 For: Prof. Carlos Bernal<br>
 Course: ICOM 4217-090<br>
-Date: November 2, 2016<br>
-Progress Report #4<br>
 
 
 ###Abstract
