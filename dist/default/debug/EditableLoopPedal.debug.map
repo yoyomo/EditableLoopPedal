@@ -23,10 +23,10 @@ Command:
   -L/Applications/microchip/xc16/v1.26/bin/bin/../../support/dsPIC33F/gld \
   build/default/debug/main.o \
   build/default/debug/_ext/363166433/LCD_4bits.o \
-  -T/tmp/tmp00013558.00 \
-  -T/tmp/tmp00013558.01 \
-  -T/tmp/tmp00013558.02 \
-  -T/tmp/tmp00013558.03 \
+  -T/tmp/tmp000135c0.00 \
+  -T/tmp/tmp000135c0.01 \
+  -T/tmp/tmp000135c0.02 \
+  -T/tmp/tmp000135c0.03 \
   --defsym=__MPLAB_BUILD=1 \
   --defsym=__MPLAB_DEBUG=1 \
   --defsym=__DEBUG=1 \
@@ -89,12 +89,12 @@ section                    address   length (PC units)   length (bytes) (dec)
 -------                    -------   -----------------   --------------------
 .text                        0x100               0x280           0x3c0  (960)
 .const                       0x380                0x30            0x48  (72)
-.text                        0x3b0               0x43e           0x65d  (1629)
-.init.delay32                0x7ee                0x1c            0x2a  (42)
-.dinit                       0x80a                0x1c            0x2a  (42)
-.shared.dinit                0x826                 0x2             0x3  (3)
+.text                        0x3b0               0x440           0x660  (1632)
+.init.delay32                0x7f0                0x1c            0x2a  (42)
+.dinit                       0x80c                0x1c            0x2a  (42)
+.shared.dinit                0x828                 0x2             0x3  (3)
 
-                 Total program memory used (bytes):          0xabc  (2748) 5%
+                 Total program memory used (bytes):          0xabf  (2751) 5%
 
 
 Ivt Memory  [Origin = 0x4, Length = 0x7c]
@@ -196,27 +196,27 @@ External Symbols in Program Memory (by address):
                   0x0004c0                  __INT2Interrupt
                   0x0004f0                  __T1Interrupt
                   0x000512                  __ADCInterrupt
-                  0x0005e2                  _updateMenuPointer
-                  0x000610                  _main
-                  0x0006a2                  _enableSwitch
-                  0x0006be                  _writeInstruction
-                  0x0006c8                  _writeData
-                  0x0006d2                  _writeHex
-                  0x0006ec                  _writeCharacter
-                  0x00070c                  _writeCommand
-                  0x00071a                  _writeMessage
-                  0x000740                  _functionSet
-                  0x00074e                  _display
-                  0x00075c                  _clearDisplay
-                  0x00076a                  _entryMode
-                  0x000778                  _top
-                  0x000786                  _bottom
-                  0x000794                  _cursorRight
-                  0x0007a2                  _cursorLeft
-                  0x0007b0                  _shiftRight
-                  0x0007be                  _shiftLeft
-                  0x0007cc                  _initLCD
-                  0x0007ee                  ___delay32
+                  0x0005e4                  _updateMenuPointer
+                  0x000612                  _main
+                  0x0006a4                  _enableSwitch
+                  0x0006c0                  _writeInstruction
+                  0x0006ca                  _writeData
+                  0x0006d4                  _writeHex
+                  0x0006ee                  _writeCharacter
+                  0x00070e                  _writeCommand
+                  0x00071c                  _writeMessage
+                  0x000742                  _functionSet
+                  0x000750                  _display
+                  0x00075e                  _clearDisplay
+                  0x00076c                  _entryMode
+                  0x00077a                  _top
+                  0x000788                  _bottom
+                  0x000796                  _cursorRight
+                  0x0007a4                  _cursorLeft
+                  0x0007b2                  _shiftRight
+                  0x0007c0                  _shiftLeft
+                  0x0007ce                  _initLCD
+                  0x0007f0                  ___delay32
 
 External Symbols in Program Memory (by name):
 
@@ -226,7 +226,7 @@ External Symbols in Program Memory (by name):
                   0x000490                  __INT1Interrupt
                   0x0004c0                  __INT2Interrupt
                   0x0004f0                  __T1Interrupt
-                  0x0007ee                  ___delay32
+                  0x0007f0                  ___delay32
                   0x0001ac                  ___fixsfsi
                   0x000286                  ___floatdisf
                   0x0001ee                  ___floatsisf
@@ -242,31 +242,31 @@ External Symbols in Program Memory (by name):
                   0x000350                  __funpack2
                   0x00012c                  __psv_init
                   0x000100                  __resetPRI
-                  0x000786                  _bottom
-                  0x00075c                  _clearDisplay
+                  0x000788                  _bottom
+                  0x00075e                  _clearDisplay
                   0x00041e                  _configureADC
-                  0x0007a2                  _cursorLeft
-                  0x000794                  _cursorRight
-                  0x00074e                  _display
-                  0x0006a2                  _enableSwitch
-                  0x00076a                  _entryMode
-                  0x000740                  _functionSet
-                  0x0007cc                  _initLCD
+                  0x0007a4                  _cursorLeft
+                  0x000796                  _cursorRight
+                  0x000750                  _display
+                  0x0006a4                  _enableSwitch
+                  0x00076c                  _entryMode
+                  0x000742                  _functionSet
+                  0x0007ce                  _initLCD
                   0x0003cc                  _initializeLCD
                   0x0003ec                  _initializePorts
                   0x0003d4                  _initializeTimer
-                  0x000610                  _main
+                  0x000612                  _main
                   0x0003b0                  _setTimerPeriod
-                  0x0007be                  _shiftLeft
-                  0x0007b0                  _shiftRight
-                  0x000778                  _top
-                  0x0005e2                  _updateMenuPointer
-                  0x0006ec                  _writeCharacter
-                  0x00070c                  _writeCommand
-                  0x0006c8                  _writeData
-                  0x0006d2                  _writeHex
-                  0x0006be                  _writeInstruction
-                  0x00071a                  _writeMessage
+                  0x0007c0                  _shiftLeft
+                  0x0007b2                  _shiftRight
+                  0x00077a                  _top
+                  0x0005e4                  _updateMenuPointer
+                  0x0006ee                  _writeCharacter
+                  0x00070e                  _writeCommand
+                  0x0006ca                  _writeData
+                  0x0006d4                  _writeHex
+                  0x0006c0                  _writeInstruction
+                  0x00071c                  _writeMessage
 
 Memory Configuration
 
@@ -1278,8 +1278,8 @@ __c30_signature
  .const             0x8380         0x30 build/default/debug/main.o
                     0x8380                  _CLOCK_FREQ
 
-.text             0x0003b0        0x43e
- .text            0x0003b0        0x2f2 build/default/debug/main.o
+.text             0x0003b0        0x440
+ .text            0x0003b0        0x2f4 build/default/debug/main.o
                   0x0003b0                  _setTimerPeriod
                   0x0003cc                  _initializeLCD
                   0x0003d4                  _initializeTimer
@@ -1289,34 +1289,34 @@ __c30_signature
                   0x0004c0                  __INT2Interrupt
                   0x0004f0                  __T1Interrupt
                   0x000512                  __ADCInterrupt
-                  0x0005e2                  _updateMenuPointer
-                  0x000610                  _main
- .text            0x0006a2        0x14c build/default/debug/_ext/363166433/LCD_4bits.o
-                  0x0006a2                  _enableSwitch
-                  0x0006be                  _writeInstruction
-                  0x0006c8                  _writeData
-                  0x0006d2                  _writeHex
-                  0x0006ec                  _writeCharacter
-                  0x00070c                  _writeCommand
-                  0x00071a                  _writeMessage
-                  0x000740                  _functionSet
-                  0x00074e                  _display
-                  0x00075c                  _clearDisplay
-                  0x00076a                  _entryMode
-                  0x000778                  _top
-                  0x000786                  _bottom
-                  0x000794                  _cursorRight
-                  0x0007a2                  _cursorLeft
-                  0x0007b0                  _shiftRight
-                  0x0007be                  _shiftLeft
-                  0x0007cc                  _initLCD
+                  0x0005e4                  _updateMenuPointer
+                  0x000612                  _main
+ .text            0x0006a4        0x14c build/default/debug/_ext/363166433/LCD_4bits.o
+                  0x0006a4                  _enableSwitch
+                  0x0006c0                  _writeInstruction
+                  0x0006ca                  _writeData
+                  0x0006d4                  _writeHex
+                  0x0006ee                  _writeCharacter
+                  0x00070e                  _writeCommand
+                  0x00071c                  _writeMessage
+                  0x000742                  _functionSet
+                  0x000750                  _display
+                  0x00075e                  _clearDisplay
+                  0x00076c                  _entryMode
+                  0x00077a                  _top
+                  0x000788                  _bottom
+                  0x000796                  _cursorRight
+                  0x0007a4                  _cursorLeft
+                  0x0007b2                  _shiftRight
+                  0x0007c0                  _shiftLeft
+                  0x0007ce                  _initLCD
 
-.init.delay32     0x0007ee         0x1c
- .init.delay32    0x0007ee         0x1c /Applications/microchip/xc16/v1.26/bin/bin/../../lib/liblega-pic30-elf.a(delay32.Leo)
-                  0x0007ee                  ___delay32
+.init.delay32     0x0007f0         0x1c
+ .init.delay32    0x0007f0         0x1c /Applications/microchip/xc16/v1.26/bin/bin/../../lib/liblega-pic30-elf.a(delay32.Leo)
+                  0x0007f0                  ___delay32
 
-.dinit            0x00080a         0x1c
- .dinit           0x00080a         0x1c data_init
+.dinit            0x00080c         0x1c
+ .dinit           0x00080c         0x1c data_init
 
-.shared.dinit     0x000826          0x2
- .shared.dinit    0x000826          0x2 shared_data_init
+.shared.dinit     0x000828          0x2
+ .shared.dinit    0x000828          0x2 shared_data_init

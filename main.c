@@ -347,7 +347,7 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     
     /*If there is a signal recorded, and the Play button is activated, mix both the
      recorded signal and the input signal*/
-    if(recorded == 1 && play == 1){
+     else if(recorded == 1 && play == 1){
         //Mixing
         mixedSignal = recordedSignal[sampleIndex] + data12bit;
         sampleIndex = (sampleIndex+1)%SPACE_LIMIT;
@@ -361,6 +361,8 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     //Output the digital signal to the DAC (converting 12-bit to 8-bit, might be changed later)
     data8bit = (int)(mixedSignal * (255.0/4095.0));
     LATB = data8bit;
+    
+    // Shift RB6 & RB7 to RB8 & RB9 respectively
     LATBbits.LATB8 = (data8bit&0x40) ? 1 : 0;
     LATBbits.LATB9 = (data8bit&0x80) ? 1 : 0;
     
