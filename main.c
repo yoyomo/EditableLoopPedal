@@ -82,19 +82,21 @@ void initializeTimer(){
  */
 void initializePorts(){
     //Configure RB0 as an Analog Input
-    TRISBbits.TRISB0 = 1;
-    ADPCFGbits.PCFG0 = 0;   
+    TRISBbits.TRISB10 = 1;
+    ADPCFGbits.PCFG10 = 0;   
          
     /*Configure 8 output pins for the Digital-to-Analog Converter (might be 
     more later)*/
     TRISBbits.TRISB9 = 0;
     TRISBbits.TRISB8 = 0;
-    TRISBbits.TRISB7 = 0;
-    TRISBbits.TRISB6 = 0;
+//    TRISBbits.TRISB7 = 0;
+//    TRISBbits.TRISB6 = 0;
     TRISBbits.TRISB5 = 0;
     TRISBbits.TRISB4 = 0;
     TRISBbits.TRISB3 = 0;
     TRISBbits.TRISB2 = 0;
+    TRISBbits.TRISB1 = 0;
+    TRISBbits.TRISB0 = 0;
     
     //Configure 2 output pins for the Record and Play/Pause LEDs.
     TRISDbits.TRISD0 = 0;
@@ -256,7 +258,7 @@ void configureADC(){
             0 = Skip ANx for input scan*/
    
     
-    ADCSSL=0b0000000000000001;  //RB0 as ADC input
+    ADCSSL=0b0000010000000000;  //RB0 as ADC input
     ADCON1bits.ASAM=1;
     IFS0bits.ADIF=1;
     IEC0bits.ADIE=1;
@@ -358,7 +360,9 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     
     //Output the digital signal to the DAC (converting 12-bit to 8-bit, might be changed later)
     data8bit = (int)(mixedSignal * (255.0/4095.0));
-    LATB = (data8bit << 2);
+    LATB = data8bit;
+    LATBbits.LATB8 = (data8bit&0x40) ? 1 : 0;
+    LATBbits.LATB9 = (data8bit&0x80) ? 1 : 0;
     
 
     //Turn off interrupt flag
