@@ -26,6 +26,7 @@ int play = 0;
 int endIndex = 0;
 int bpm;
 double bpmRatio;
+int bpmStep = 1;
 
 //Variable used for Timer Period calculation
 const int CLOCK_FREQ = 31250;
@@ -346,8 +347,27 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
      //If the system is recording, save the signal to internal memory.
     if(recording == 1){
         recordedSignal[sampleIndex] = data12bit;
-        sampleIndex = (sampleIndex+1)%SPACE_LIMIT;
-        endIndex++;
+        
+        //Interpolate missing values to average transition
+        if(bpmStep >= 2 && sampleIndex > 0){
+            
+            recordedSignal[sampleIndex - bpmStep/2] = 
+                (recordedSignal[sampleIndex - bpmStep] 
+               + recordedSignal[sampleIndex])         / 2;
+            
+            if(bpmStep >= 4){
+                recordedSignal[sampleIndex - 3*bpmStep/4] =
+                    (recordedSignal[sampleIndex - bpmStep]
+                   + recordedSignal[sampleIndex - bpmStep/2]) /2;
+                
+                recordedSignal[sampleIndex - bpmStep/4] = 
+                    (recordedSignal[sampleIndex - bpmStep/2]
+                   + recordedSignal[sampleIndex]) / 2;
+            }
+        }
+        
+        sampleIndex = (sampleIndex+bpmStep)%SPACE_LIMIT;
+        endIndex += bpmStep;
 
     }
     
@@ -356,7 +376,7 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
      else if(recorded == 1 && play == 1){
         //Mixing
         mixedSignal = recordedSignal[sampleIndex] + data12bit;
-        sampleIndex = (sampleIndex+1)%SPACE_LIMIT;
+        sampleIndex = (sampleIndex+bpmStep)%SPACE_LIMIT;
         
     }
      
@@ -368,7 +388,15 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     bpm = ADCBUF1;
     
     //Apply BPM value
-    
+    if(bpm > 3000){
+        bpmStep = 4;
+    }
+    else if(bpm > 1500){
+        bpmStep = 2;
+    }
+    else{
+        bpmStep = 1;
+    }
     
     //Output the digital signal to the DAC (converting 12-bit to 8-bit, might be changed later)
     data8bit = (int)(mixedSignal * (255.0/4095.0));
