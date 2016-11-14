@@ -24,10 +24,12 @@ int recordedSignal[SPACE_LIMIT];
 int sampleIndex = 0;
 int play = 0;
 int endIndex = 0;
+
 int bpm;
 double bpmRatio;
 int bpmStep = 1;
 
+int vol;
 //Variable used for Timer Period calculation
 const int CLOCK_FREQ = 31250;
 
@@ -91,7 +93,12 @@ void initializePorts(){
     //Configure RB11 as an Analog Input for BPM Signal
     TRISBbits.TRISB11 = 1;
     ADPCFGbits.PCFG11 = 0;
-         
+    
+    //Configure RB12 as an Analog Input for Volume Signal
+    TRISBbits.TRISB12 = 1;
+    ADPCFGbits.PCFG12 = 0;
+    
+    
     /*Configure 8 output pins for the Digital-to-Analog Converter (might be 
     more later)*/
     TRISBbits.TRISB9 = 0;
@@ -124,8 +131,15 @@ void initializePorts(){
     _INT2IE = 1;
     
     /*Up/Down/Select Button Configuration*/
-    TRISDbits.TRISD2 = 1;
-    TRISDbits.TRISD3 = 1;
+    TRISDbits.TRISD2 = 1; // Up
+    TRISDbits.TRISD3 = 1; //Down
+    
+    /*Configure a digital input, and enable interrupts on the pin 
+     (negative edge triggered) -> Select button*/
+    TRISAbits.TRISA11 = 1;
+    _INT0EP = 1;
+    _INT0IF = 0;
+    _INT0IE = 1;
 }
 
 /**
@@ -208,7 +222,7 @@ void configureADC(){
             0 = Always use MUX A input multiplexer settings*/
     ADCON2bits.VCFG=7;
     ADCON2bits.CSCNA=1;
-    ADCON2bits.SMPI=1;
+    ADCON2bits.SMPI=3;
     ADCON2bits.BUFM=0;
     ADCON2bits.ALTS=0;
     /*
@@ -265,7 +279,7 @@ void configureADC(){
             0 = Skip ANx for input scan*/
    
     
-    ADCSSL=0b0000110000000000;  //RB10 as ADC input
+    ADCSSL=0b0001110000000000;  //RB10 & RB11 & RB12 as ADC input
     ADCON1bits.ASAM=1;
     IFS0bits.ADIF=1;
     IEC0bits.ADIE=1;
@@ -315,6 +329,18 @@ void __attribute__((interrupt,no_auto_psv)) _INT2Interrupt( void )
 }
 
 /**
+ * Interrupt Service Routine for the Select button.
+ */
+void __attribute__((interrupt,no_auto_psv)) _INT0Interrupt( void )
+{
+    //Turn off the interrupt
+    _INT0IF = 0;      
+     
+    //Output selected track
+    
+}
+
+/**
  * Interrupt Service Routine for the Timer module.
  */
 void __attribute__((interrupt,no_auto_psv)) _T1Interrupt( void )
@@ -343,7 +369,21 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
 {
     //Read a sample of the analog input from the ADC buffer
      data12bit = ADCBUF0; 
-  
+     
+     //Get BPM value
+    bpm = ADCBUF1;
+    
+    //Apply BPM value
+    if(bpm > 3000){
+        bpmStep = 4;
+    }
+    else if(bpm > 1500){
+        bpmStep = 2;
+    }
+    else{
+        bpmStep = 1;
+    }
+    
      //If the system is recording, save the signal to internal memory.
     if(recording == 1){
         recordedSignal[sampleIndex] = data12bit;
@@ -384,19 +424,12 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     else
         mixedSignal = data12bit;
     
-    //Get BPM value
-    bpm = ADCBUF1;
     
-    //Apply BPM value
-    if(bpm > 3000){
-        bpmStep = 4;
-    }
-    else if(bpm > 1500){
-        bpmStep = 2;
-    }
-    else{
-        bpmStep = 1;
-    }
+    //Get Volume value
+    vol = ADCBUF2;
+    
+    //Apply volume value
+    mixedSignal = (int)(mixedSignal * (vol/2048.0));
     
     //Output the digital signal to the DAC (converting 12-bit to 8-bit, might be changed later)
     data8bit = (int)(mixedSignal * (255.0/4095.0));
@@ -405,7 +438,6 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     // Shift RB6 & RB7 to RB8 & RB9 respectively
     LATBbits.LATB8 = (data8bit&0x40) ? 1 : 0;
     LATBbits.LATB9 = (data8bit&0x80) ? 1 : 0;
-    
 
     //Turn off interrupt flag
     IFS0bits.ADIF = 0;  
@@ -426,12 +458,17 @@ void updateMenuPointer(){
  * Main function of the program.
  * 
  * Pins:
+ * RD0 -> LED Record
+ * RD1 -> LED Play/Pause
+ * RD2 -> Up Button
+ * RD3 -> Down Button
  * RD8 -> Rec Button
  * RD9 -> Play/Pause
- * RB9-RB2 -> D7-D0 DAC
- * RB0 -> Analog Input
- * RF0 -> LED Record
- * RF1 -> LED Play/Pause
+ * RB9-RB0 -> D7-D0 DAC
+ * RB10 -> Analog Signal Input
+ * RB11 -> Analog BPM Input
+ * RB12 -> Analog Volume Input
+ * RA11 -> Select Button
  */
 int main(int argc, char** argv) {
     //Set ports and peripherals
@@ -472,7 +509,7 @@ int main(int argc, char** argv) {
             recWritten = 0;
         }
         
-        /*//LCD button check
+        //LCD button check
         // Up
         if(PORTDbits.RD2 == 0){
             __delay_ms(30);
@@ -487,13 +524,13 @@ int main(int argc, char** argv) {
             
             updateMenuPointer();
         }
-        */
         
-        bpmRatio = bpm / 2047.5;
+        
+        /*bpmRatio = bpm / 2047.5;
         char buffer[50];
         sprintf(buffer,"%.2f",bpmRatio);
         clearDisplay();
-        writeMessage(buffer);
+        writeMessage(buffer);*/
         
     
     }
