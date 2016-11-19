@@ -35,15 +35,17 @@ const int CLOCK_FREQ = 31250;
 
 //Array for menu items
 char *menu[5] = {
-    "Empty Track",
-    "Recording...",
-    "Edit",
-    "Delete",
+    "Empty Track    ",
+    "Recording...   ",
+    "Edit           ",
+    "Delete         ",
     "Track "
 };
+
 int menuPointer;
 int recWritten;
 int trackWritten;
+int emptyWritten;
 int i;
 /**
  * Sets the timer period. Used for counting time passed.
@@ -458,6 +460,8 @@ void updateMenuPointer(){
     for(i=0;i<menuPointer;i++){
         bottom();
     }
+}
+void updateCursor(){
     for(i=0;i<15;i++){
         cursorRight();
     }
@@ -493,45 +497,49 @@ int main(int argc, char** argv) {
     ADCON1bits.ADON = 1;
    
     clearDisplay();
-    writeMessage(menu[0]);
     menuPointer = 0;
-    updateMenuPointer();
     
     while(1){
         //LCD Button Polling (To be completed)
-        
+        if (!emptyWritten){
+            updateMenuPointer();
+            writeMessage(menu[0]);
+            emptyWritten = 1;
+            recWritten = 0;
+        }
         // LCD Process #0
-        if(recording & ~recWritten){
-            clearDisplay();
+        else if(recording & !recWritten){
+            updateMenuPointer();
+            
             writeMessage(menu[1]);
             recWritten = 1;
             trackWritten = 0;
         }
         
         // LCD Process #1
-        else if(recorded & ~trackWritten){
-            clearDisplay();
+        else if(recorded & !trackWritten){
+            updateMenuPointer();
             writeMessage(menu[4]);
-            writeMessage("1");
+            writeMessage("1        ");
             menuPointer++;
+            emptyWritten = 0;
             trackWritten = 1;
-            recWritten = 0;
+            
         }
         
         //LCD button check
         // Up
         if(PORTDbits.RD2 == 0){
-            __delay_ms(30);
             menuPointer--;
             if(menuPointer<0) menuPointer = 0;
             updateMenuPointer();
+            updateCursor();
         }
         //Down
         if(PORTDbits.RD3 == 0){
-            __delay_ms(30);
             menuPointer++;
-            
             updateMenuPointer();
+            updateCursor();
         }
         
         
