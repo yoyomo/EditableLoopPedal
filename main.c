@@ -9,7 +9,9 @@
 #include <p30f4013.h>
 #include "LCD_4bits.h"
 
-#define SPACE_LIMIT 500
+//#define SPACE_LIMIT 500
+#define SPACE_LIMIT 250
+#define NUMBER_OF_TRACKS 2
 
 //Delay Mod
 #define FOSC    (7372800ULL)
@@ -19,8 +21,8 @@
 
 //Global Variables
 int data12bit, data8bit, mixedSignal;
-int recording, recorded;
-int recordedSignal[SPACE_LIMIT];
+int recording[NUMBER_OF_TRACKS], recorded[NUMBER_OF_TRACKS];
+int recordedSignal[NUMBER_OF_TRACKS][SPACE_LIMIT];
 int sampleIndex = 0;
 int play = 0;
 int endIndex = 0;
@@ -43,9 +45,9 @@ char *menu[5] = {
 };
 
 int menuPointer;
-int recWritten;
-int trackWritten;
-int emptyWritten;
+int recWritten[NUMBER_OF_TRACKS];
+int trackWritten[NUMBER_OF_TRACKS];
+int emptyWritten[NUMBER_OF_TRACKS];
 int i;
 /**
  * Sets the timer period. Used for counting time passed.
@@ -297,10 +299,10 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
       _INT1IF = 0;      
       
     //If the system was recording, set flags to stop recording and play the recorded track.
-    if(recording == 1){
-       recording = 0;
+    if(recording[menuPointer] == 1){
+       recording[menuPointer] = 0;
      sampleIndex = 0;
-     recorded= 1;
+     recorded[menuPointer]= 1;
      LATDbits.LATD0 = 0;
      play = 1;
      LATDbits.LATD1 = 1;
@@ -309,11 +311,11 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
     else{
         //if not playing, reset recorded signal
         if(play==0){
-            recorded = 0;
-            memset(recordedSignal, 0, sizeof recordedSignal);
+            recorded[menuPointer] = 0;
+            memset(recordedSignal[menuPointer], 0, sizeof recordedSignal[menuPointer]);
         }
         //Set flags for recording, and reset the timer
-        recording = 1;
+        recording[menuPointer] = 1;
         LATDbits.LATD0 = 1;
         TMR1 = 0x00;
        T1CONbits.TON = 1;  
@@ -331,7 +333,7 @@ void __attribute__((interrupt,no_auto_psv)) _INT2Interrupt( void )
      
     //Toggle the Play/Pause status, and the corresponding LED
     //only if there is something recorded
-    if(recorded==1){
+    if(recorded[menuPointer]==1){
         play ^= 0x01; 
         LATDbits.LATD1 = ~LATDbits.LATD1;
     }
@@ -359,11 +361,11 @@ void __attribute__((interrupt,no_auto_psv)) _T1Interrupt( void )
     
     /*If recording, time limit has been reached. Set flags to stop recording 
      and play the recorded signal*/
-    if(recording == 1){
-     recording = 0;
-     if(recorded==0) // first time recording, reset sample index to replay
+    if(recording[menuPointer] == 1){
+     recording[menuPointer] = 0;
+     if(recorded[menuPointer]==0) // first time recording, reset sample index to replay
         sampleIndex = 0;
-     recorded= 1;
+     recorded[menuPointer]= 1;
      LATDbits.LATD0 = 0;
      play = 1;
      LATDbits.LATD1 = 1;
@@ -395,25 +397,25 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     }
     
      //If the system is recording, save the signal to internal memory.
-    if(recording == 1){
+    if(recording[menuPointer] == 1){
         
-        recordedSignal[sampleIndex] = data12bit;
+        recordedSignal[menuPointer][sampleIndex] = data12bit;
         
         //Interpolate missing values to average transition
         if(bpmStep >= 2 && sampleIndex > 0){
             
-            recordedSignal[sampleIndex - bpmStep/2] = 
-                (recordedSignal[sampleIndex - bpmStep] 
-               + recordedSignal[sampleIndex])         / 2;
+            recordedSignal[menuPointer][sampleIndex - bpmStep/2] = 
+                (recordedSignal[menuPointer][sampleIndex - bpmStep] 
+               + recordedSignal[menuPointer][sampleIndex])         / 2;
             
             if(bpmStep >= 4){
-                recordedSignal[sampleIndex - 3*bpmStep/4] =
-                    (recordedSignal[sampleIndex - bpmStep]
-                   + recordedSignal[sampleIndex - bpmStep/2]) /2;
+                recordedSignal[menuPointer][sampleIndex - 3*bpmStep/4] =
+                    (recordedSignal[menuPointer][sampleIndex - bpmStep]
+                   + recordedSignal[menuPointer][sampleIndex - bpmStep/2]) /2;
                 
-                recordedSignal[sampleIndex - bpmStep/4] = 
-                    (recordedSignal[sampleIndex - bpmStep/2]
-                   + recordedSignal[sampleIndex]) / 2;
+                recordedSignal[menuPointer][sampleIndex - bpmStep/4] = 
+                    (recordedSignal[menuPointer][sampleIndex - bpmStep/2]
+                   + recordedSignal[menuPointer][sampleIndex]) / 2;
             }
         }
         
@@ -421,20 +423,22 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
         endIndex += bpmStep;
 
     }
-    
-    /*If there is a signal recorded, and the Play button is activated, mix both the
+    //If not recording, and nothing has been recorded yet, bypass the input signal.
+    else{
+        mixedSignal = data12bit;
+        /*If there is a signal recorded, and the Play button is activated, mix both the
      recorded signal and the input signal*/
-     else if(recorded == 1 && play == 1){
-        //Mixing
-        mixedSignal = recordedSignal[sampleIndex] + data12bit;
-        sampleIndex = (sampleIndex+bpmStep)%SPACE_LIMIT;
-        
+        if(play == 1){
+            if(recorded[0]==1){
+                mixedSignal = mixedSignal + recordedSignal[0][sampleIndex];
+            }
+            if(recorded[1]==1){
+                mixedSignal = mixedSignal + recordedSignal[1][sampleIndex];
+            }
+            sampleIndex = (sampleIndex+bpmStep)%SPACE_LIMIT;
+        }
     }
      
-    //If not recording, and nothing has been recorded yet, bypass the input signal.
-    else
-        mixedSignal = data12bit;
-    
     
     //Get Volume value
     vol = ADCBUF2;
@@ -465,6 +469,15 @@ void updateCursor(){
     for(i=0;i<15;i++){
         cursorRight();
     }
+}
+void goUpMenu(){
+    menuPointer--;
+    if(menuPointer<0) menuPointer = 0;
+}
+void goDownMenu(){
+    menuPointer++;
+    if(menuPointer >= NUMBER_OF_TRACKS)
+        menuPointer = NUMBER_OF_TRACKS - 1 ;
 }
 
 /*
@@ -501,43 +514,45 @@ int main(int argc, char** argv) {
     
     while(1){
         //LCD Button Polling (To be completed)
-        if (!emptyWritten){
+        if (!recorded[menuPointer] & !emptyWritten[menuPointer]){
             updateMenuPointer();
             writeMessage(menu[0]);
-            emptyWritten = 1;
-            recWritten = 0;
+            emptyWritten[menuPointer] = 1;
+            recWritten[menuPointer] = 0;
         }
         // LCD Process #0
-        else if(recording & !recWritten){
+        else if(recording[menuPointer] & !recWritten[menuPointer]){
             updateMenuPointer();
             
             writeMessage(menu[1]);
-            recWritten = 1;
-            trackWritten = 0;
+            recWritten[menuPointer] = 1;
+            trackWritten[menuPointer] = 0;
         }
         
         // LCD Process #1
-        else if(recorded & !trackWritten){
+        else if(recorded[menuPointer] & !trackWritten[menuPointer]){
             updateMenuPointer();
             writeMessage(menu[4]);
-            writeMessage("1        ");
-            menuPointer++;
-            emptyWritten = 0;
-            trackWritten = 1;
+            char buffer[50];
+            sprintf(buffer,"%d        ",menuPointer+1);
+            writeMessage(buffer);
+            
+            emptyWritten[menuPointer] = 0;
+            trackWritten[menuPointer] = 1;
             
         }
         
         //LCD button check
         // Up
         if(PORTDbits.RD2 == 0){
-            menuPointer--;
-            if(menuPointer<0) menuPointer = 0;
+            
+            goUpMenu();
             updateMenuPointer();
             updateCursor();
         }
         //Down
         if(PORTDbits.RD3 == 0){
-            menuPointer++;
+            goDownMenu();
             updateMenuPointer();
             updateCursor();
         }
