@@ -305,8 +305,12 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
      //T1CONbits.TON = 0;  
     }
     else{
+        //if not playing, reset recorded signal
+        if(play==0){
+            recorded = 0;
+            memset(recordedSignal, 0, sizeof recordedSignal);
+        }
         //Set flags for recording, and reset the timer
-        recorded = 0;
         recording = 1;
         LATDbits.LATD0 = 1;
         TMR1 = 0x00;
@@ -324,8 +328,11 @@ void __attribute__((interrupt,no_auto_psv)) _INT2Interrupt( void )
     _INT2IF = 0;      
      
     //Toggle the Play/Pause status, and the corresponding LED
-    play ^= 0x01; 
-    LATDbits.LATD1 = ~LATDbits.LATD1;
+    //only if there is something recorded
+    if(recorded==1){
+        play ^= 0x01; 
+        LATDbits.LATD1 = ~LATDbits.LATD1;
+    }
 }
 
 /**
@@ -351,8 +358,9 @@ void __attribute__((interrupt,no_auto_psv)) _T1Interrupt( void )
     /*If recording, time limit has been reached. Set flags to stop recording 
      and play the recorded signal*/
     if(recording == 1){
-    recording = 0;
-     sampleIndex = 0;
+     recording = 0;
+     if(recorded==0) // first time recording, reset sample index to replay
+        sampleIndex = 0;
      recorded= 1;
      LATDbits.LATD0 = 0;
      play = 1;
@@ -386,6 +394,7 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     
      //If the system is recording, save the signal to internal memory.
     if(recording == 1){
+        
         recordedSignal[sampleIndex] = data12bit;
         
         //Interpolate missing values to average transition
