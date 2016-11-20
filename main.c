@@ -10,8 +10,8 @@
 #include "LCD_4bits.h"
 
 //#define SPACE_LIMIT 500
-#define SPACE_LIMIT 250
-#define NUMBER_OF_TRACKS 2
+#define SPACE_LIMIT 125
+#define NUMBER_OF_TRACKS 4
 
 //Delay Mod
 #define FOSC    (7372800ULL)
@@ -460,10 +460,11 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
 }
 
 void updateMenuPointer(){
-    top();
-    for(i=0;i<menuPointer;i++){
-        bottom();
-    }
+    if(menuPointer==0) firstRow();
+    else if(menuPointer==1) secondRow();
+    else if(menuPointer==2) thirdRow();
+    else if(menuPointer==3) fourthRow();
+
 }
 void updateCursor(){
     for(i=0;i<15;i++){

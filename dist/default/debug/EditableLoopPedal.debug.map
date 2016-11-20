@@ -23,10 +23,10 @@ Command:
   -L/Applications/microchip/xc16/v1.26/bin/bin/../../support/dsPIC33F/gld \
   build/default/debug/main.o \
   build/default/debug/_ext/363166433/LCD_4bits.o \
-  -T/tmp/tmp00002eee.00 \
-  -T/tmp/tmp00002eee.01 \
-  -T/tmp/tmp00002eee.02 \
-  -T/tmp/tmp00002eee.03 \
+  -T/tmp/tmp0000386c.00 \
+  -T/tmp/tmp0000386c.01 \
+  -T/tmp/tmp0000386c.02 \
+  -T/tmp/tmp0000386c.03 \
   --defsym=__MPLAB_BUILD=1 \
   --defsym=__MPLAB_DEBUG=1 \
   --defsym=__DEBUG=1 \
@@ -115,11 +115,11 @@ section                    address   length (PC units)   length (bytes) (dec)
 -------                    -------   -----------------   --------------------
 .text                        0x100               0xcfe          0x137d  (4989)
 .const                       0xdfe                0x54            0x7e  (126)
-.text                        0xe52               0x77a           0xb37  (2871)
-.dinit                      0x15cc                0x52            0x7b  (123)
-.shared.dinit               0x161e                 0x2             0x3  (3)
+.text                        0xe52               0x7c6           0xba9  (2985)
+.dinit                      0x1618                0x52            0x7b  (123)
+.shared.dinit               0x166a                 0x2             0x3  (3)
 
-                 Total program memory used (bytes):         0x1fb0  (8112) 16%
+                 Total program memory used (bytes):         0x2022  (8226) 16%
 
 
 Ivt Memory  [Origin = 0x4, Length = 0x7c]
@@ -141,12 +141,12 @@ reserve_data_0x800           0x800                0x20            0x20  (32)
 reserve_data_0x820           0x820                 0x2             0x2  (2)
 reserve_data_0x822           0x822                 0x2             0x2  (2)
 reserve_data_0x824           0x824                0x2c            0x2c  (44)
-.nbss                        0x850                   0           0x414  (1044)
-.ndata                       0xc64                   0             0xc  (12)
-.nbss                        0xc70                   0             0x8  (8)
-.data                        0xc78                   0            0x3c  (60)
+.nbss                        0x850                   0           0x428  (1064)
+.ndata                       0xc78                   0             0xc  (12)
+.nbss                        0xc84                   0             0x8  (8)
+.data                        0xc8c                   0            0x3c  (60)
 
-                 Total data memory used (bytes):          0x4b4  (1204) 58%
+                 Total data memory used (bytes):          0x4c8  (1224) 59%
 
 
 Dynamic Memory Usage
@@ -154,9 +154,9 @@ Dynamic Memory Usage
 region                     address                      maximum length  (dec)
 ------                     -------                      ---------------------
 heap                             0                                   0  (0)
-stack                        0xcb4                               0x34c  (844)
+stack                        0xcc8                               0x338  (824)
 
-                 Maximum dynamic memory (bytes):          0x34c  (844)
+                 Maximum dynamic memory (bytes):          0x338  (824)
 
 
 External Symbols in Data Memory (by address):
@@ -165,51 +165,51 @@ External Symbols in Data Memory (by address):
                     0x0852                  _data8bit
                     0x0854                  _mixedSignal
                     0x0856                  _recording
-                    0x085a                  _recorded
-                    0x085e                  _recordedSignal
-                    0x0c46                  _sampleIndex
-                    0x0c48                  _play
-                    0x0c4a                  _endIndex
-                    0x0c4c                  _bpm
-                    0x0c4e                  _bpmRatio
-                    0x0c52                  _vol
-                    0x0c54                  _menuPointer
-                    0x0c56                  _recWritten
-                    0x0c5a                  _trackWritten
-                    0x0c5e                  _emptyWritten
-                    0x0c62                  _i
-                    0x0c64                  _bpmStep
-                    0x0c66                  _menu
-                    0x0c70                  _wait
-                    0x0c72                  _charIndex
-                    0x0c74                  _charValue
-                    0x0c76                  _init
+                    0x085e                  _recorded
+                    0x0866                  _recordedSignal
+                    0x0c4e                  _sampleIndex
+                    0x0c50                  _play
+                    0x0c52                  _endIndex
+                    0x0c54                  _bpm
+                    0x0c56                  _bpmRatio
+                    0x0c5a                  _vol
+                    0x0c5c                  _menuPointer
+                    0x0c5e                  _recWritten
+                    0x0c66                  _trackWritten
+                    0x0c6e                  _emptyWritten
+                    0x0c76                  _i
+                    0x0c78                  _bpmStep
+                    0x0c7a                  _menu
+                    0x0c84                  _wait
+                    0x0c86                  _charIndex
+                    0x0c88                  _charValue
+                    0x0c8a                  _init
 
 External Symbols in Data Memory (by name):
 
-                    0x0c4c                  _bpm
-                    0x0c4e                  _bpmRatio
-                    0x0c64                  _bpmStep
-                    0x0c72                  _charIndex
-                    0x0c74                  _charValue
+                    0x0c54                  _bpm
+                    0x0c56                  _bpmRatio
+                    0x0c78                  _bpmStep
+                    0x0c86                  _charIndex
+                    0x0c88                  _charValue
                     0x0850                  _data12bit
                     0x0852                  _data8bit
-                    0x0c5e                  _emptyWritten
-                    0x0c4a                  _endIndex
-                    0x0c62                  _i
-                    0x0c76                  _init
-                    0x0c66                  _menu
-                    0x0c54                  _menuPointer
+                    0x0c6e                  _emptyWritten
+                    0x0c52                  _endIndex
+                    0x0c76                  _i
+                    0x0c8a                  _init
+                    0x0c7a                  _menu
+                    0x0c5c                  _menuPointer
                     0x0854                  _mixedSignal
-                    0x0c48                  _play
-                    0x0c56                  _recWritten
-                    0x085a                  _recorded
-                    0x085e                  _recordedSignal
+                    0x0c50                  _play
+                    0x0c5e                  _recWritten
+                    0x085e                  _recorded
+                    0x0866                  _recordedSignal
                     0x0856                  _recording
-                    0x0c46                  _sampleIndex
-                    0x0c5a                  _trackWritten
-                    0x0c52                  _vol
-                    0x0c70                  _wait
+                    0x0c4e                  _sampleIndex
+                    0x0c66                  _trackWritten
+                    0x0c5a                  _vol
+                    0x0c84                  _wait
 
 External Symbols in Program Memory (by address):
 
@@ -259,29 +259,33 @@ External Symbols in Program Memory (by address):
                   0x001006                  __INT0Interrupt
                   0x00100e                  __T1Interrupt
                   0x001058                  __ADCInterrupt
-                  0x0012e6                  _updateMenuPointer
-                  0x001302                  _updateCursor
-                  0x00131a                  _goUpMenu
-                  0x00132e                  _goDownMenu
-                  0x001344                  _main
-                  0x001460                  _enableSwitch
-                  0x001496                  _writeInstruction
-                  0x0014a0                  _writeData
-                  0x0014aa                  _writeHex
-                  0x0014c4                  _writeCharacter
-                  0x0014e4                  _writeCommand
-                  0x0014f2                  _writeMessage
-                  0x001518                  _functionSet
-                  0x001526                  _display
-                  0x001534                  _clearDisplay
-                  0x001542                  _entryMode
-                  0x001550                  _top
-                  0x00155e                  _bottom
-                  0x00156c                  _cursorRight
-                  0x00157a                  _cursorLeft
-                  0x001588                  _shiftRight
-                  0x001596                  _shiftLeft
-                  0x0015a4                  _initLCD
+                  0x0012ea                  _updateMenuPointer
+                  0x001316                  _updateCursor
+                  0x00132e                  _goUpMenu
+                  0x001342                  _goDownMenu
+                  0x001358                  _main
+                  0x001474                  _enableSwitch
+                  0x0014aa                  _writeInstruction
+                  0x0014b4                  _writeData
+                  0x0014be                  _writeHex
+                  0x0014d8                  _writeCharacter
+                  0x0014f8                  _writeCommand
+                  0x001506                  _writeMessage
+                  0x00152c                  _functionSet
+                  0x00153a                  _display
+                  0x001548                  _clearDisplay
+                  0x001556                  _entryMode
+                  0x001564                  _top
+                  0x001572                  _bottom
+                  0x001580                  _firstRow
+                  0x00158e                  _secondRow
+                  0x00159c                  _thirdRow
+                  0x0015aa                  _fourthRow
+                  0x0015b8                  _cursorRight
+                  0x0015c6                  _cursorLeft
+                  0x0015d4                  _shiftRight
+                  0x0015e2                  _shiftLeft
+                  0x0015f0                  _initLCD
 
 External Symbols in Program Memory (by name):
 
@@ -322,37 +326,41 @@ External Symbols in Program Memory (by name):
                   0x00012c                  __psv_init
                   0x000100                  __resetPRI
                   0x000424                  __sprintf_cdnopuxX
-                  0x00155e                  _bottom
-                  0x001534                  _clearDisplay
+                  0x001572                  _bottom
+                  0x001548                  _clearDisplay
                   0x000ed0                  _configureADC
-                  0x00157a                  _cursorLeft
-                  0x00156c                  _cursorRight
-                  0x001526                  _display
-                  0x001460                  _enableSwitch
-                  0x001542                  _entryMode
-                  0x001518                  _functionSet
-                  0x00132e                  _goDownMenu
-                  0x00131a                  _goUpMenu
-                  0x0015a4                  _initLCD
+                  0x0015c6                  _cursorLeft
+                  0x0015b8                  _cursorRight
+                  0x00153a                  _display
+                  0x001474                  _enableSwitch
+                  0x001556                  _entryMode
+                  0x001580                  _firstRow
+                  0x0015aa                  _fourthRow
+                  0x00152c                  _functionSet
+                  0x001342                  _goDownMenu
+                  0x00132e                  _goUpMenu
+                  0x0015f0                  _initLCD
                   0x000e6e                  _initializeLCD
                   0x000e8e                  _initializePorts
                   0x000e76                  _initializeTimer
-                  0x001344                  _main
+                  0x001358                  _main
                   0x0007b6                  _memcpy
                   0x000408                  _memset
+                  0x00158e                  _secondRow
                   0x000e52                  _setTimerPeriod
-                  0x001596                  _shiftLeft
-                  0x001588                  _shiftRight
+                  0x0015e2                  _shiftLeft
+                  0x0015d4                  _shiftRight
                   0x0007c4                  _strchr
-                  0x001550                  _top
-                  0x001302                  _updateCursor
-                  0x0012e6                  _updateMenuPointer
-                  0x0014c4                  _writeCharacter
-                  0x0014e4                  _writeCommand
-                  0x0014a0                  _writeData
-                  0x0014aa                  _writeHex
-                  0x001496                  _writeInstruction
-                  0x0014f2                  _writeMessage
+                  0x00159c                  _thirdRow
+                  0x001564                  _top
+                  0x001316                  _updateCursor
+                  0x0012ea                  _updateMenuPointer
+                  0x0014d8                  _writeCharacter
+                  0x0014f8                  _writeCommand
+                  0x0014b4                  _writeData
+                  0x0014be                  _writeHex
+                  0x0014aa                  _writeInstruction
+                  0x001506                  _writeMessage
                   0x000416                  sprintf_cdnopuxX.XXeo:_prout
 
 Memory Configuration
@@ -577,26 +585,26 @@ userdata
 .comment
  *(.comment)
 
-.debug_info       0x000000       0x2009
+.debug_info       0x000000       0x20ce
  *(.debug_info)
- .debug_info      0x000000       0x1abc build/default/debug/main.o
- .debug_info      0x001abc        0x54d build/default/debug/_ext/363166433/LCD_4bits.o
+ .debug_info      0x000000       0x1b23 build/default/debug/main.o
+ .debug_info      0x001b23        0x5ab build/default/debug/_ext/363166433/LCD_4bits.o
  *(.gnu.linkonce.wi.*)
 
-.debug_abbrev     0x000000        0x2a9
+.debug_abbrev     0x000000        0x2e7
  *(.debug_abbrev)
- .debug_abbrev    0x000000        0x1aa build/default/debug/main.o
- .debug_abbrev    0x0001aa         0xff build/default/debug/_ext/363166433/LCD_4bits.o
+ .debug_abbrev    0x000000        0x1e8 build/default/debug/main.o
+ .debug_abbrev    0x0001e8         0xff build/default/debug/_ext/363166433/LCD_4bits.o
 
-.debug_line       0x000000        0x278
+.debug_line       0x000000        0x288
  *(.debug_line)
  .debug_line      0x000000        0x17a build/default/debug/main.o
- .debug_line      0x00017a         0xfe build/default/debug/_ext/363166433/LCD_4bits.o
+ .debug_line      0x00017a        0x10e build/default/debug/_ext/363166433/LCD_4bits.o
 
-.debug_frame      0x000000        0x43c
+.debug_frame      0x000000        0x4ac
  *(.debug_frame)
  .debug_frame     0x000000        0x230 build/default/debug/main.o
- .debug_frame     0x000230        0x20c build/default/debug/_ext/363166433/LCD_4bits.o
+ .debug_frame     0x000230        0x27c build/default/debug/_ext/363166433/LCD_4bits.o
 
 .debug_str        0x000000        0x163
  *(.debug_str)
@@ -610,12 +618,12 @@ userdata
  *(.debug_macinfo)
 
 .debug_pubnames
-                  0x000000        0x36b
+                  0x000000        0x3a1
  *(.debug_pubnames)
  .debug_pubnames
                   0x000000        0x21f build/default/debug/main.o
  .debug_pubnames
-                  0x00021f        0x14c build/default/debug/_ext/363166433/LCD_4bits.o
+                  0x00021f        0x182 build/default/debug/_ext/363166433/LCD_4bits.o
 
 .debug_ranges
  *(.debug_ranges)
@@ -1394,41 +1402,41 @@ __c30_signature
  __c30_signature
                   0x00033b          0x6 /Applications/microchip/xc16/v1.26/bin/bin/../../lib/libm-elf.a(divmoddi3.eo)
 
-.nbss               0x0850        0x414
- .nbss              0x0850        0x414 build/default/debug/main.o
+.nbss               0x0850        0x428
+ .nbss              0x0850        0x428 build/default/debug/main.o
                     0x0850                  _data12bit
                     0x0852                  _data8bit
                     0x0854                  _mixedSignal
                     0x0856                  _recording
-                    0x085a                  _recorded
-                    0x085e                  _recordedSignal
-                    0x0c46                  _sampleIndex
-                    0x0c48                  _play
-                    0x0c4a                  _endIndex
-                    0x0c4c                  _bpm
-                    0x0c4e                  _bpmRatio
-                    0x0c52                  _vol
-                    0x0c54                  _menuPointer
-                    0x0c56                  _recWritten
-                    0x0c5a                  _trackWritten
-                    0x0c5e                  _emptyWritten
-                    0x0c62                  _i
+                    0x085e                  _recorded
+                    0x0866                  _recordedSignal
+                    0x0c4e                  _sampleIndex
+                    0x0c50                  _play
+                    0x0c52                  _endIndex
+                    0x0c54                  _bpm
+                    0x0c56                  _bpmRatio
+                    0x0c5a                  _vol
+                    0x0c5c                  _menuPointer
+                    0x0c5e                  _recWritten
+                    0x0c66                  _trackWritten
+                    0x0c6e                  _emptyWritten
+                    0x0c76                  _i
 
-.ndata              0x0c64          0xc
- .ndata             0x0c64          0xc build/default/debug/main.o
-                    0x0c64                  _bpmStep
-                    0x0c66                  _menu
+.ndata              0x0c78          0xc
+ .ndata             0x0c78          0xc build/default/debug/main.o
+                    0x0c78                  _bpmStep
+                    0x0c7a                  _menu
 
-.nbss               0x0c70          0x8
- .nbss              0x0c70          0x8 build/default/debug/_ext/363166433/LCD_4bits.o
-                    0x0c70                  _wait
-                    0x0c72                  _charIndex
-                    0x0c74                  _charValue
-                    0x0c76                  _init
+.nbss               0x0c84          0x8
+ .nbss              0x0c84          0x8 build/default/debug/_ext/363166433/LCD_4bits.o
+                    0x0c84                  _wait
+                    0x0c86                  _charIndex
+                    0x0c88                  _charValue
+                    0x0c8a                  _init
 
-.data               0x0c78         0x3c
- .data              0x0c78         0x22 /Applications/microchip/xc16/v1.26/bin/bin/../../lib/liblega-c-elf.a(xlitob.XXeo)
- .data              0x0c9a         0x1a /Applications/microchip/xc16/v1.26/bin/bin/../../lib/liblega-c-elf.a(xprintf_cdnopuxX.XXeo)
+.data               0x0c8c         0x3c
+ .data              0x0c8c         0x22 /Applications/microchip/xc16/v1.26/bin/bin/../../lib/liblega-c-elf.a(xlitob.XXeo)
+ .data              0x0cae         0x1a /Applications/microchip/xc16/v1.26/bin/bin/../../lib/liblega-c-elf.a(xprintf_cdnopuxX.XXeo)
 
 .ivt._INT1Interrupt
                   0x000034          0x2
@@ -1459,8 +1467,8 @@ __c30_signature
  .const             0x8dfe         0x54 build/default/debug/main.o
                     0x8dfe                  _CLOCK_FREQ
 
-.text             0x000e52        0x77a
- .text            0x000e52        0x60e build/default/debug/main.o
+.text             0x000e52        0x7c6
+ .text            0x000e52        0x622 build/default/debug/main.o
                   0x000e52                  _setTimerPeriod
                   0x000e6e                  _initializeLCD
                   0x000e76                  _initializeTimer
@@ -1471,33 +1479,37 @@ __c30_signature
                   0x001006                  __INT0Interrupt
                   0x00100e                  __T1Interrupt
                   0x001058                  __ADCInterrupt
-                  0x0012e6                  _updateMenuPointer
-                  0x001302                  _updateCursor
-                  0x00131a                  _goUpMenu
-                  0x00132e                  _goDownMenu
-                  0x001344                  _main
- .text            0x001460        0x16c build/default/debug/_ext/363166433/LCD_4bits.o
-                  0x001460                  _enableSwitch
-                  0x001496                  _writeInstruction
-                  0x0014a0                  _writeData
-                  0x0014aa                  _writeHex
-                  0x0014c4                  _writeCharacter
-                  0x0014e4                  _writeCommand
-                  0x0014f2                  _writeMessage
-                  0x001518                  _functionSet
-                  0x001526                  _display
-                  0x001534                  _clearDisplay
-                  0x001542                  _entryMode
-                  0x001550                  _top
-                  0x00155e                  _bottom
-                  0x00156c                  _cursorRight
-                  0x00157a                  _cursorLeft
-                  0x001588                  _shiftRight
-                  0x001596                  _shiftLeft
-                  0x0015a4                  _initLCD
+                  0x0012ea                  _updateMenuPointer
+                  0x001316                  _updateCursor
+                  0x00132e                  _goUpMenu
+                  0x001342                  _goDownMenu
+                  0x001358                  _main
+ .text            0x001474        0x1a4 build/default/debug/_ext/363166433/LCD_4bits.o
+                  0x001474                  _enableSwitch
+                  0x0014aa                  _writeInstruction
+                  0x0014b4                  _writeData
+                  0x0014be                  _writeHex
+                  0x0014d8                  _writeCharacter
+                  0x0014f8                  _writeCommand
+                  0x001506                  _writeMessage
+                  0x00152c                  _functionSet
+                  0x00153a                  _display
+                  0x001548                  _clearDisplay
+                  0x001556                  _entryMode
+                  0x001564                  _top
+                  0x001572                  _bottom
+                  0x001580                  _firstRow
+                  0x00158e                  _secondRow
+                  0x00159c                  _thirdRow
+                  0x0015aa                  _fourthRow
+                  0x0015b8                  _cursorRight
+                  0x0015c6                  _cursorLeft
+                  0x0015d4                  _shiftRight
+                  0x0015e2                  _shiftLeft
+                  0x0015f0                  _initLCD
 
-.dinit            0x0015cc         0x52
- .dinit           0x0015cc         0x52 data_init
+.dinit            0x001618         0x52
+ .dinit           0x001618         0x52 data_init
 
-.shared.dinit     0x00161e          0x2
- .shared.dinit    0x00161e          0x2 shared_data_init
+.shared.dinit     0x00166a          0x2
+ .shared.dinit    0x00166a          0x2 shared_data_init
