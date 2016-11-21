@@ -382,6 +382,9 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     //Read a sample of the analog input from the ADC buffer
      data12bit = ADCBUF0; 
      
+     //bypass
+     mixedSignal = data12bit;
+     
      //Get BPM value
     bpm = ADCBUF1;
     
@@ -425,7 +428,7 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     }
     //If not recording, and nothing has been recorded yet, bypass the input signal.
     else{
-        mixedSignal = data12bit;
+        
         /*If there is a signal recorded, and the Play button is activated, mix both the
      recorded signal and the input signal*/
         if(play == 1){
@@ -448,11 +451,13 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     
     //Output the digital signal to the DAC (converting 12-bit to 8-bit, might be changed later)
     data8bit = (int)(mixedSignal * (255.0/4095.0));
+    int shift8bit = (data8bit << 2) & 0x300; //0011 0000 0000
+    data8bit = data8bit | shift8bit;
     LATB = data8bit;
     
     // Shift RB6 & RB7 to RB8 & RB9 respectively
-    LATBbits.LATB8 = (data8bit&0x40) ? 1 : 0;
-    LATBbits.LATB9 = (data8bit&0x80) ? 1 : 0;
+    //LATBbits.LATB8 = (data8bit&0x40) ? 1 : 0;
+    //LATBbits.LATB9 = (data8bit&0x80) ? 1 : 0;
 
     //Turn off interrupt flag
     IFS0bits.ADIF = 0;  
