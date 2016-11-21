@@ -6,11 +6,15 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <p30f4013.h>
 #include "LCD_4bits.h"
+#include "mem23k256.h"
+
 
 //#define SPACE_LIMIT 500
-#define SPACE_LIMIT 125
+#define SPACE_LIMIT 8191
+#define PAGE 32
 #define NUMBER_OF_TRACKS 4
 
 //Delay Mod
@@ -20,12 +24,16 @@
 
 
 //Global Variables
-int data12bit, data8bit, mixedSignal;
+int data12bit;
+unsigned char data8bit, mixedSignal;
 int recording[NUMBER_OF_TRACKS], recorded[NUMBER_OF_TRACKS];
-int recordedSignal[NUMBER_OF_TRACKS][SPACE_LIMIT];
+unsigned char recordedSignal[NUMBER_OF_TRACKS][PAGE];
 int sampleIndex = 0;
 int play = 0;
-int endIndex = 0;
+int endIndex = SPACE_LIMIT / PAGE;
+int ramPointer;
+int ramWrite;
+int ramRead;
 
 int bpm;
 double bpmRatio;
@@ -48,6 +56,7 @@ int menuPointer;
 int recWritten[NUMBER_OF_TRACKS];
 int trackWritten[NUMBER_OF_TRACKS];
 int emptyWritten[NUMBER_OF_TRACKS];
+unsigned char temp[PAGE];
 int i;
 /**
  * Sets the timer period. Used for counting time passed.
@@ -79,7 +88,7 @@ void initializeTimer(){
     
     /*Set the timer period for counting purposes. Used as the record time
     limit (1 second for now)*/
-    setTimerPeriod(1);
+    setTimerPeriod(6);
     
     //Clear timer interrupt flag, and enables the timer interrupt
     _T1IF = 0;
@@ -362,13 +371,16 @@ void __attribute__((interrupt,no_auto_psv)) _T1Interrupt( void )
     /*If recording, time limit has been reached. Set flags to stop recording 
      and play the recorded signal*/
     if(recording[menuPointer] == 1){
-     recording[menuPointer] = 0;
-     if(recorded[menuPointer]==0) // first time recording, reset sample index to replay
-        sampleIndex = 0;
-     recorded[menuPointer]= 1;
-     LATDbits.LATD0 = 0;
-     play = 1;
-     LATDbits.LATD1 = 1;
+        recording[menuPointer] = 0;
+        if(recorded[menuPointer]==0){ // first time recording, reset sample index to replay
+           sampleIndex = 0;
+           endIndex = ramPointer;
+        }
+        recorded[menuPointer]= 1;
+        ramPointer = 0;
+        LATDbits.LATD0 = 0;
+        play = 1;
+        LATDbits.LATD1 = 1;
     }
      //T1CONbits.TON = 0;  
     
@@ -381,9 +393,9 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
 {
     //Read a sample of the analog input from the ADC buffer
      data12bit = ADCBUF0; 
-     
+     data8bit = (unsigned char)(data12bit * (255.0/4095.0));
      //bypass
-     mixedSignal = data12bit;
+     mixedSignal = data8bit;
      
      //Get BPM value
     bpm = ADCBUF1;
@@ -402,7 +414,7 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
      //If the system is recording, save the signal to internal memory.
     if(recording[menuPointer] == 1){
         
-        recordedSignal[menuPointer][sampleIndex] = data12bit;
+        recordedSignal[menuPointer][sampleIndex] = data8bit;
         
         //Interpolate missing values to average transition
         if(bpmStep >= 2 && sampleIndex > 0){
@@ -422,8 +434,11 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
             }
         }
         
-        sampleIndex = (sampleIndex+bpmStep)%SPACE_LIMIT;
-        endIndex += bpmStep;
+        sampleIndex = (sampleIndex+bpmStep)%PAGE;
+        if(sampleIndex == 0){
+            ramWrite = 1;
+        }
+        //endIndex += bpmStep;
 
     }
     //If not recording, and nothing has been recorded yet, bypass the input signal.
@@ -438,7 +453,16 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
             if(recorded[1]==1){
                 mixedSignal = mixedSignal + recordedSignal[1][sampleIndex];
             }
-            sampleIndex = (sampleIndex+bpmStep)%SPACE_LIMIT;
+            if(recorded[2]==1){
+                mixedSignal = mixedSignal + recordedSignal[2][sampleIndex];
+            }
+            if(recorded[3]==1){
+                mixedSignal = mixedSignal + recordedSignal[3][sampleIndex];
+            }
+            sampleIndex = (sampleIndex+bpmStep)%PAGE;
+            if(sampleIndex == 0){
+                ramRead = 1;
+            }
         }
     }
      
@@ -447,17 +471,13 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     vol = ADCBUF2;
     
     //Apply volume value
-    mixedSignal = (int)(mixedSignal * (vol/2048.0));
+    mixedSignal = (unsigned char)(mixedSignal * (vol/2048.0));
     
     //Output the digital signal to the DAC (converting 12-bit to 8-bit, might be changed later)
-    data8bit = (int)(mixedSignal * (255.0/4095.0));
-    int shift8bit = (data8bit << 2) & 0x300; //0011 0000 0000
-    data8bit = data8bit | shift8bit;
-    LATB = data8bit;
     
     // Shift RB6 & RB7 to RB8 & RB9 respectively
-    //LATBbits.LATB8 = (data8bit&0x40) ? 1 : 0;
-    //LATBbits.LATB9 = (data8bit&0x80) ? 1 : 0;
+    int shift8bit = (mixedSignal << 2) & 0x300; //0011 0000 0000
+    LATB = mixedSignal | shift8bit;    
 
     //Turn off interrupt flag
     IFS0bits.ADIF = 0;  
@@ -504,10 +524,11 @@ void goDownMenu(){
  */
 int main(int argc, char** argv) {
     //Set ports and peripherals
-    initializeLCD();
+    //initializeLCD();
     initializeTimer();
     initializePorts();
     configureADC();
+    mem_init();
     
     //Turn on the timer module
     T1CONbits.TON = 1;
@@ -515,10 +536,29 @@ int main(int argc, char** argv) {
     //Turn on the ADC module
     ADCON1bits.ADON = 1;
    
-    clearDisplay();
+    //clearDisplay();
     menuPointer = 0;
     
     while(1){
+        //polling to write to RAM
+        if(ramWrite){
+            for(i=0;i<PAGE;i++){
+                temp[i] = recordedSignal[menuPointer][i];
+            }
+            for(i=0;i<PAGE;i++){
+                mem_write(ramPointer*PAGE,temp[i]);
+            }
+            ramPointer = (ramPointer+1) % (SPACE_LIMIT / PAGE);
+            ramWrite = 0;
+        }
+        if(ramRead){
+            for(i=0;i<PAGE;i++){
+                temp[i] = mem_read(ramPointer*PAGE + i);
+            }
+            ramPointer = (ramPointer+1) % endIndex;
+            ramRead = 0;
+        }
+        /*
         //LCD Button Polling (To be completed)
         if (!recorded[menuPointer] & !emptyWritten[menuPointer]){
             updateMenuPointer();
@@ -562,7 +602,7 @@ int main(int argc, char** argv) {
             updateMenuPointer();
             updateCursor();
         }
-        
+        */
         
         /*bpmRatio = bpm / 2047.5;
         char buffer[50];
