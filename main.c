@@ -37,8 +37,7 @@ int sampleIndex = 0;
 int play = 0;
 int endIndex = SPACE_LIMIT / PAGE;
 int ramPointer;
-int ramWrite;
-int ramRead;
+int accessRAM;
 int bpm;
 double bpmRatio;
 int bpmStep = 1;
@@ -201,46 +200,47 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
         bpmStep = 1;
     }
     
-     //If the system is recording, save the signal to internal memory.
-    if(recording[menuPointer]){
-        
-        recordedSignal[menuPointer][sampleIndex] = data8bit;
-        
-        //Interpolate missing values to average transition
-        if(bpmStep >= 2 && sampleIndex > 0){
-            
-            recordedSignal[menuPointer][sampleIndex - bpmStep/2] = 
-                (recordedSignal[menuPointer][sampleIndex - bpmStep] 
-               + recordedSignal[menuPointer][sampleIndex])         / 2;
-            
-            if(bpmStep >= 4){
-                recordedSignal[menuPointer][sampleIndex - 3*bpmStep/4] =
-                    (recordedSignal[menuPointer][sampleIndex - bpmStep]
-                   + recordedSignal[menuPointer][sampleIndex - bpmStep/2]) /2;
-                
-                recordedSignal[menuPointer][sampleIndex - bpmStep/4] = 
-                    (recordedSignal[menuPointer][sampleIndex - bpmStep/2]
-                   + recordedSignal[menuPointer][sampleIndex]) / 2;
-            }
-        }
-        
-    }
-        
-    /*If there is a signal recorded, and the Play button is activated, mix both the
- recorded signal and the input signal*/
-    if(play){
-        for(track = 0; track < NUMBER_OF_TRACKS; track++){
-            if(recorded[track]==1 && !recording[track]){
-                mixedSignal = mixedSignal + recordedSignal[track][sampleIndex];
-            }
-        }
-    }
-    
+    //If playing and/or recording update read and/or write variables
     if(play || recording[menuPointer]){
+        //If the system is recording, save the signal to internal memory.
+        if(recording[menuPointer]){
+
+            recordedSignal[menuPointer][sampleIndex] = data8bit;
+
+            //Interpolate missing values to average transition
+            if(bpmStep >= 2 && sampleIndex > 0){
+
+                recordedSignal[menuPointer][sampleIndex - bpmStep/2] = 
+                    (recordedSignal[menuPointer][sampleIndex - bpmStep] 
+                   + recordedSignal[menuPointer][sampleIndex])         / 2;
+
+                if(bpmStep >= 4){
+                    recordedSignal[menuPointer][sampleIndex - 3*bpmStep/4] =
+                        (recordedSignal[menuPointer][sampleIndex - bpmStep]
+                       + recordedSignal[menuPointer][sampleIndex - bpmStep/2]) /2;
+
+                    recordedSignal[menuPointer][sampleIndex - bpmStep/4] = 
+                        (recordedSignal[menuPointer][sampleIndex - bpmStep/2]
+                       + recordedSignal[menuPointer][sampleIndex]) / 2;
+                }
+            }
+
+        }
+
+        /*If there is a signal recorded, and the Play button is activated, mix both the
+     recorded signal and the input signal*/
+        if(play){
+            for(track = 0; track < NUMBER_OF_TRACKS; track++){
+                if(recorded[track]==1 && !recording[track]){
+                    mixedSignal = mixedSignal + recordedSignal[track][sampleIndex];
+                }
+            }
+        }
+        
+        //increment local sample index
         sampleIndex = (sampleIndex+bpmStep)%PAGE;
         if(sampleIndex == 0){
-            ramWrite = recording[menuPointer];
-            ramRead = play;
+            accessRAM = 1;
         }
     }
      
@@ -298,28 +298,21 @@ int main(int argc, char** argv) {
     
     while(1){
         //polling to write to RAM
-        if(ramWrite){
+        if(accessRAM){
             for(i=0;i<PAGE;i++){
-                mem_write((ramPointer*PAGE + i) + (menuPointer*SPACE_LIMIT),
-                        recordedSignal[menuPointer][i]);
-            }
-        }
-        if(ramRead){        
-            //read every track in synchronization
-            for(i=0;i<PAGE;i++){
+                if(recording[menuPointer]){
+                    mem_write((ramPointer*PAGE + i) + (menuPointer*SPACE_LIMIT),
+                            recordedSignal[menuPointer][i]);
+                }
                 for(track = 0; track < NUMBER_OF_TRACKS; track++){
                     if(recorded[track] && !recording[track]){
                         recordedSignal[track][i] = 
                             mem_read((ramPointer*PAGE + i) + (track*SPACE_LIMIT));
                     }
                 }
-                
             }
-        }
-        if(ramRead || ramWrite){
-            ramPointer = (ramPointer+1) % endIndex;
-            ramWrite = 0;
-            ramRead = 0;
+            ramPointer = (ramPointer + 1) % endIndex;
+            accessRAM = 0;
         }
         /*
         //LCD Button Polling (To be completed)
