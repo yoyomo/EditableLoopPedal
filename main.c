@@ -61,7 +61,7 @@ unsigned char temp[PAGE];
 int i;
 //memory
 unsigned char throwaway;
-
+int track;
 
 /*******************************************************************************
  ********************************** Functions **********************************
@@ -96,11 +96,15 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
     //If the system was recording, set flags to stop recording and play the recorded track.
     if(recording[menuPointer] == 1){
        recording[menuPointer] = 0;
-     sampleIndex = 0;
-     recorded[menuPointer]= 1;
-     LATDbits.LATD0 = 0;
-     play = 1;
-     LATDbits.LATD1 = 1;
+        if(recorded[0]==0){ // first time recording, reset sample index to replay
+           sampleIndex = 0;
+           endIndex = ramPointer + 1;
+        }
+        recorded[menuPointer]= 1;
+        ramPointer = 0;
+        LATDbits.LATD0 = 0;
+        play = 1;
+        LATDbits.LATD1 = 1;
      //T1CONbits.TON = 0;  
     }
     else{
@@ -158,9 +162,9 @@ void __attribute__((interrupt,no_auto_psv)) _T1Interrupt( void )
      and play the recorded signal*/
     if(recording[menuPointer] == 1){
         recording[menuPointer] = 0;
-        if(recorded[menuPointer]==0){ // first time recording, reset sample index to replay
+        if(recorded[0]==0){ // first time recording, reset sample index to replay
            sampleIndex = 0;
-           endIndex = ramPointer;
+           endIndex = ramPointer + 1;
         }
         recorded[menuPointer]= 1;
         ramPointer = 0;
@@ -178,12 +182,12 @@ void __attribute__((interrupt,no_auto_psv)) _T1Interrupt( void )
 void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
 {
     //Read a sample of the analog input from the ADC buffer
-     data12bit = ADCBUF0; 
-     data8bit = (unsigned char)(data12bit * (255.0/4095.0));
-     //bypass
-     mixedSignal = data8bit;
+    data12bit = ADCBUF0; 
+    data8bit = (unsigned char)(data12bit * (255.0/4095.0));
+    //bypass
+    mixedSignal = data8bit;
      
-     //Get BPM value
+    //Get BPM value
     bpm = ADCBUF1;
     
     //Apply BPM value
@@ -198,7 +202,7 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     }
     
      //If the system is recording, save the signal to internal memory.
-    if(recording[menuPointer] == 1){
+    if(recording[menuPointer]){
         
         recordedSignal[menuPointer][sampleIndex] = data8bit;
         
@@ -220,35 +224,23 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
             }
         }
         
+    }
+        
+    /*If there is a signal recorded, and the Play button is activated, mix both the
+ recorded signal and the input signal*/
+    if(play){
+        for(track = 0; track < NUMBER_OF_TRACKS; track++){
+            if(recorded[track]==1 && !recording[track]){
+                mixedSignal = mixedSignal + recordedSignal[track][sampleIndex];
+            }
+        }
+    }
+    
+    if(play || recording[menuPointer]){
         sampleIndex = (sampleIndex+bpmStep)%PAGE;
         if(sampleIndex == 0){
-            ramWrite = 1;
-        }
-        //endIndex += bpmStep;
-
-    }
-    //If not recording, and nothing has been recorded yet, bypass the input signal.
-    else{
-        
-        /*If there is a signal recorded, and the Play button is activated, mix both the
-     recorded signal and the input signal*/
-        if(play == 1){
-            if(recorded[0]==1){
-                mixedSignal = mixedSignal + recordedSignal[0][sampleIndex];
-            }
-            if(recorded[1]==1){
-                mixedSignal = mixedSignal + recordedSignal[1][sampleIndex];
-            }
-            if(recorded[2]==1){
-                mixedSignal = mixedSignal + recordedSignal[2][sampleIndex];
-            }
-            if(recorded[3]==1){
-                mixedSignal = mixedSignal + recordedSignal[3][sampleIndex];
-            }
-            sampleIndex = (sampleIndex+bpmStep)%PAGE;
-            if(sampleIndex == 0){
-                ramRead = 1;
-            }
+            ramWrite = recording[menuPointer];
+            ramRead = play;
         }
     }
      
@@ -308,16 +300,25 @@ int main(int argc, char** argv) {
         //polling to write to RAM
         if(ramWrite){
             for(i=0;i<PAGE;i++){
-                mem_write(ramPointer*PAGE + i,recordedSignal[menuPointer][i]);
+                mem_write((ramPointer*PAGE + i) + (menuPointer*SPACE_LIMIT),
+                        recordedSignal[menuPointer][i]);
             }
-            ramPointer = (ramPointer+1) % (SPACE_LIMIT / PAGE);
-            ramWrite = 0;
         }
-        if(ramRead){
+        if(ramRead){        
+            //read every track in synchronization
             for(i=0;i<PAGE;i++){
-                recordedSignal[menuPointer][i] = mem_read(ramPointer*PAGE + i);
+                for(track = 0; track < NUMBER_OF_TRACKS; track++){
+                    if(recorded[track] && !recording[track]){
+                        recordedSignal[track][i] = 
+                            mem_read((ramPointer*PAGE + i) + (track*SPACE_LIMIT));
+                    }
+                }
+                
             }
+        }
+        if(ramRead || ramWrite){
             ramPointer = (ramPointer+1) % endIndex;
+            ramWrite = 0;
             ramRead = 0;
         }
         /*
