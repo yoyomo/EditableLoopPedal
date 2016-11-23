@@ -7,23 +7,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <spi.h>
 #include <p30f4013.h>
 #include "LCD_4bits.h"
-#include "mem23k256.h"
-
 
 //#define SPACE_LIMIT 500
 #define SPACE_LIMIT 8191
 #define PAGE 32
 #define NUMBER_OF_TRACKS 4
-
+//Defines the possible instructions that can be sent to the memory
+#define READ_MODE 0x03
+#define WRITE_MODE 0x02
+#define READ_SR 0x05
+#define WRITE_SR 0x01
 //Delay Mod
 #define FOSC    (7372800ULL)
 #define FCY     (FOSC/2)
 #include <libpic30.h>
 
 
-//Global Variables
+/*******************************************************************************
+ ******************************* Global Variables ******************************
+ ******************************************************************************/
 int data12bit;
 unsigned char data8bit, mixedSignal;
 int recording[NUMBER_OF_TRACKS], recorded[NUMBER_OF_TRACKS];
@@ -34,15 +39,12 @@ int endIndex = SPACE_LIMIT / PAGE;
 int ramPointer;
 int ramWrite;
 int ramRead;
-
 int bpm;
 double bpmRatio;
 int bpmStep = 1;
-
 int vol;
 //Variable used for Timer Period calculation
 const int CLOCK_FREQ = 31250;
-
 //Array for menu items
 char *menu[5] = {
     "Empty Track    ",
@@ -51,13 +53,479 @@ char *menu[5] = {
     "Delete         ",
     "Track "
 };
-
 int menuPointer;
 int recWritten[NUMBER_OF_TRACKS];
 int trackWritten[NUMBER_OF_TRACKS];
 int emptyWritten[NUMBER_OF_TRACKS];
 unsigned char temp[PAGE];
 int i;
+//memory
+unsigned char throwaway;
+
+
+/*******************************************************************************
+ ********************************** Functions **********************************
+ ******************************************************************************/
+static unsigned char WriteSPI(unsigned char data_out);
+void mem_init (void);
+void mem_write(unsigned short address, unsigned char data);
+unsigned char mem_read(unsigned short address);
+void mem_close (void);
+void setTimerPeriod(int period);
+void initializeLCD();
+void initializeTimer();
+void initializePorts();
+void configureADC();
+void updateMenuPointer();
+void updateCursor();
+void goUpMenu();
+void goDownMenu();
+
+/*******************************************************************************
+ ********************************* Interrupts **********************************
+ ******************************************************************************/
+
+/**
+ * Interrupt Service Routine for the Record button.
+ */
+void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
+{
+    //Turn off interrupt flag
+      _INT1IF = 0;      
+      
+    //If the system was recording, set flags to stop recording and play the recorded track.
+    if(recording[menuPointer] == 1){
+       recording[menuPointer] = 0;
+     sampleIndex = 0;
+     recorded[menuPointer]= 1;
+     LATDbits.LATD0 = 0;
+     play = 1;
+     LATDbits.LATD1 = 1;
+     //T1CONbits.TON = 0;  
+    }
+    else{
+        //if not playing, reset recorded signal
+        if(play==0){
+            recorded[menuPointer] = 0;
+            memset(recordedSignal[menuPointer], 0, sizeof recordedSignal[menuPointer]);
+        }
+        //Set flags for recording, and reset the timer
+        recording[menuPointer] = 1;
+        LATDbits.LATD0 = 1;
+        TMR1 = 0x00;
+       T1CONbits.TON = 1;  
+
+    }
+}
+
+/**
+ * Interrupt Service Routine for the Play/Pause button.
+ */
+void __attribute__((interrupt,no_auto_psv)) _INT2Interrupt( void )
+{
+    //Turn off the interrupt
+    _INT2IF = 0;      
+     
+    //Toggle the Play/Pause status, and the corresponding LED
+    //only if there is something recorded
+    if(recorded[menuPointer]==1){
+        play ^= 0x01; 
+        LATDbits.LATD1 = ~LATDbits.LATD1;
+    }
+}
+
+/**
+ * Interrupt Service Routine for the Select button.
+ */
+void __attribute__((interrupt,no_auto_psv)) _INT0Interrupt( void )
+{
+    //Turn off the interrupt
+    _INT0IF = 0;      
+     
+    //Output selected track
+    
+}
+
+/**
+ * Interrupt Service Routine for the Timer module.
+ */
+void __attribute__((interrupt,no_auto_psv)) _T1Interrupt( void )
+{
+    //Turn off interrupt flag
+    _T1IF = 0;   
+    
+    /*If recording, time limit has been reached. Set flags to stop recording 
+     and play the recorded signal*/
+    if(recording[menuPointer] == 1){
+        recording[menuPointer] = 0;
+        if(recorded[menuPointer]==0){ // first time recording, reset sample index to replay
+           sampleIndex = 0;
+           endIndex = ramPointer;
+        }
+        recorded[menuPointer]= 1;
+        ramPointer = 0;
+        LATDbits.LATD0 = 0;
+        play = 1;
+        LATDbits.LATD1 = 1;
+    }
+     //T1CONbits.TON = 0;  
+    
+}
+
+/**
+ * Interrupt Service Routine for the Analog-to-Digital Converter sampling/converting process.
+ */
+void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
+{
+    //Read a sample of the analog input from the ADC buffer
+     data12bit = ADCBUF0; 
+     data8bit = (unsigned char)(data12bit * (255.0/4095.0));
+     //bypass
+     mixedSignal = data8bit;
+     
+     //Get BPM value
+    bpm = ADCBUF1;
+    
+    //Apply BPM value
+    if(bpm > 3000){
+        bpmStep = 4;
+    }
+    else if(bpm > 1500){
+        bpmStep = 2;
+    }
+    else{
+        bpmStep = 1;
+    }
+    
+     //If the system is recording, save the signal to internal memory.
+    if(recording[menuPointer] == 1){
+        
+        recordedSignal[menuPointer][sampleIndex] = data8bit;
+        
+        //Interpolate missing values to average transition
+        if(bpmStep >= 2 && sampleIndex > 0){
+            
+            recordedSignal[menuPointer][sampleIndex - bpmStep/2] = 
+                (recordedSignal[menuPointer][sampleIndex - bpmStep] 
+               + recordedSignal[menuPointer][sampleIndex])         / 2;
+            
+            if(bpmStep >= 4){
+                recordedSignal[menuPointer][sampleIndex - 3*bpmStep/4] =
+                    (recordedSignal[menuPointer][sampleIndex - bpmStep]
+                   + recordedSignal[menuPointer][sampleIndex - bpmStep/2]) /2;
+                
+                recordedSignal[menuPointer][sampleIndex - bpmStep/4] = 
+                    (recordedSignal[menuPointer][sampleIndex - bpmStep/2]
+                   + recordedSignal[menuPointer][sampleIndex]) / 2;
+            }
+        }
+        
+        sampleIndex = (sampleIndex+bpmStep)%PAGE;
+        if(sampleIndex == 0){
+            ramWrite = 1;
+        }
+        //endIndex += bpmStep;
+
+    }
+    //If not recording, and nothing has been recorded yet, bypass the input signal.
+    else{
+        
+        /*If there is a signal recorded, and the Play button is activated, mix both the
+     recorded signal and the input signal*/
+        if(play == 1){
+            if(recorded[0]==1){
+                mixedSignal = mixedSignal + recordedSignal[0][sampleIndex];
+            }
+            if(recorded[1]==1){
+                mixedSignal = mixedSignal + recordedSignal[1][sampleIndex];
+            }
+            if(recorded[2]==1){
+                mixedSignal = mixedSignal + recordedSignal[2][sampleIndex];
+            }
+            if(recorded[3]==1){
+                mixedSignal = mixedSignal + recordedSignal[3][sampleIndex];
+            }
+            sampleIndex = (sampleIndex+bpmStep)%PAGE;
+            if(sampleIndex == 0){
+                ramRead = 1;
+            }
+        }
+    }
+     
+    
+    //Get Volume value
+    vol = ADCBUF2;
+    
+    //Apply volume value
+    mixedSignal = (unsigned char)(mixedSignal * (vol/2048.0));
+    
+    //Output the digital signal to the DAC (converting 12-bit to 8-bit, might be changed later)
+    
+    // Shift RB6 & RB7 to RB8 & RB9 respectively
+    int shift8bit = (mixedSignal << 2) & 0x300; //0011 0000 0000
+    LATB = mixedSignal | shift8bit;    
+
+    //Turn off interrupt flag
+    IFS0bits.ADIF = 0;  
+    
+}
+
+/*******************************************************************************
+ ************************************ Main *************************************
+ ******************************************************************************/
+/*
+ * Pins:
+ * RD0 -> LED Record
+ * RD1 -> LED Play/Pause
+ * RD2 -> Up Button
+ * RD3 -> Down Button
+ * RD8 -> Rec Button
+ * RD9 -> Play/Pause
+ * RB9-RB0 -> D7-D0 DAC
+ * RB10 -> Analog Signal Input
+ * RB11 -> Analog BPM Input
+ * RB12 -> Analog Volume Input
+ * RA11 -> Select Button
+ */
+int main(int argc, char** argv) {
+    //Set ports and peripherals
+    //initializeLCD();
+    initializeTimer();
+    initializePorts();
+    configureADC();
+    mem_init();
+    
+    //Turn on the timer module
+    T1CONbits.TON = 1;
+    
+    //Turn on the ADC module
+    ADCON1bits.ADON = 1;
+   
+    //clearDisplay();
+    menuPointer = 0;
+    
+    while(1){
+        //polling to write to RAM
+        if(ramWrite){
+            for(i=0;i<PAGE;i++){
+                mem_write(ramPointer*PAGE + i,recordedSignal[menuPointer][i]);
+            }
+            ramPointer = (ramPointer+1) % (SPACE_LIMIT / PAGE);
+            ramWrite = 0;
+        }
+        if(ramRead){
+            for(i=0;i<PAGE;i++){
+                recordedSignal[menuPointer][i] = mem_read(ramPointer*PAGE + i);
+            }
+            ramPointer = (ramPointer+1) % endIndex;
+            ramRead = 0;
+        }
+        /*
+        //LCD Button Polling (To be completed)
+        if (!recorded[menuPointer] & !emptyWritten[menuPointer]){
+            updateMenuPointer();
+            writeMessage(menu[0]);
+            emptyWritten[menuPointer] = 1;
+            recWritten[menuPointer] = 0;
+        }
+        // LCD Process #0
+        else if(recording[menuPointer] & !recWritten[menuPointer]){
+            updateMenuPointer();
+            
+            writeMessage(menu[1]);
+            recWritten[menuPointer] = 1;
+            trackWritten[menuPointer] = 0;
+        }
+        
+        // LCD Process #1
+        else if(recorded[menuPointer] & !trackWritten[menuPointer]){
+            updateMenuPointer();
+            writeMessage(menu[4]);
+            char buffer[50];
+            sprintf(buffer,"%d        ",menuPointer+1);
+            writeMessage(buffer);
+            
+            emptyWritten[menuPointer] = 0;
+            trackWritten[menuPointer] = 1;
+            
+        }
+        
+        //LCD button check
+        // Up
+        if(PORTDbits.RD2 == 0){
+            
+            goUpMenu();
+            updateMenuPointer();
+            updateCursor();
+        }
+        //Down
+        if(PORTDbits.RD3 == 0){
+            goDownMenu();
+            updateMenuPointer();
+            updateCursor();
+        }
+        */
+        
+        /*bpmRatio = bpm / 2047.5;
+        char buffer[50];
+        sprintf(buffer,"%.2f",bpmRatio);
+        clearDisplay();
+        writeMessage(buffer);*/
+        
+    
+    }
+    return (EXIT_SUCCESS);
+}
+
+/*******************************************************************************
+ ********************************** Functions **********************************
+ ******************************************************************************/
+
+/**
+ * Writes the given data to the memory.
+ * @param data_out the data to be written to memory
+ * @return the value returned by the memory
+ */
+static unsigned char WriteSPI(unsigned char data_out)
+{   
+    if (SPI1CONbits.MODE16)          /* SPI in 16-bit mode*/
+        SPI1BUF = data_out;
+    else 
+        SPI1BUF = data_out & 0xff;   /*  SPI in 8-bit mode (Byte mode) */
+    
+    //Wait while the MCU receives data
+    while(!DataRdySPI1());
+    
+    //Return the data received from the memory
+    return SPI1BUF;
+}
+
+/**
+ * Initializes the memory.
+ */
+void mem_init (void)
+{
+    //Variables for storing the values of the configuration registers
+    unsigned int SPICONValue;
+    unsigned int SPISTATValue;
+    
+    //GPIO configuration for SPI communication
+    TRISFbits.TRISF6 = 0;        //Output RF6/SCK1
+    TRISFbits.TRISF2 = 1;        //Input  RF2/SDI1
+    TRISFbits.TRISF3 = 0;        //Output RF3/SDO1
+    TRISFbits.TRISF4 = 0;       //Output  RF4/Mem CS
+    
+    //Deselects the memory (memory in idle mode)
+    LATFbits.LATF4 = 1;
+    
+    //Sets the configuration values for the SPI1CON register
+    SPICONValue =           FRAME_ENABLE_OFF &     //FRMEN:  0 = Framed SPI support disabled
+                            FRAME_SYNC_OUTPUT &    //SPIFSD: 0 = Frame sync pulse output (master) 
+                            ENABLE_SDO_PIN &       //DISSDO: 0 = SDOx pin is controlled by the module
+                            SPI_MODE16_OFF &       //MODE16: 0 = Communication is 8 bits
+                            SPI_SMP_OFF &          //SMP:    0
+                            SPI_CKE_OFF &          //CKE:    0 = Serial output data changes on transition from Idle clk state to active clk state
+                            SLAVE_ENABLE_OFF  &    //SSEN:   0 = SS pin not used by module. Pin controlled by port function
+                            CLK_POL_ACTIVE_HIGH &  //CKP:    0 = SS pin not used by module. Pin controlled by port function
+                            MASTER_ENABLE_ON &     //MSTEN:  1 = Master mode
+                            SEC_PRESCAL_1_1 &      //SPRE<2:0>: Secondary Prescale 1:1
+                            PRI_PRESCAL_4_1;       //PPRE<1:0> Primary Prescale 4:1
+    
+    
+    //Sets the configuration values for the SPI1STAT register
+    SPISTATValue =          SPI_ENABLE &           //SPIEN:   1 = Enables module and configures SCKx, SDOx, SDIx and SSx as serial port pins
+                            SPI_IDLE_CON &         //SPISIDL: 0 = Continue module operation in Idle mode
+                            SPI_RX_OVFLOW_CLR;     //SPIROV:  0 = No overflow has occurred. Clear receive overflow bit.
+   
+    //Starts the SPI module with the given configuration
+    OpenSPI1(SPICONValue, SPISTATValue);
+    
+    //Initialize the Memory's Status Register
+    LATFbits.LATF4 = 0;             //Select the memory
+    WriteSPI(WRITE_SR);             //Send the instruction for writing to the memory Status Register
+    while(SPI1STATbits.SPITBF);     //Wait until the data is transmitted
+    
+    WriteSPI((char)1);              //Send the value for the Status Register (8-bit mode, ignore HOLD pin)
+    while(SPI1STATbits.SPITBF);     //Wait until the data is transmitted
+   
+    LATFbits.LATF4 = 1;             //Deselect the memory
+    
+    
+    //Dummy Read
+    throwaway = SPI1BUF;
+
+}
+
+/**
+ * Writes the data given to the memory at the given address.
+ * @param address the address to write to
+ * @param data the data to be 
+ */
+void mem_write(unsigned short address, unsigned char data)
+{
+    unsigned char addressHB = (address & 0xFF00) >> 8;
+    unsigned char addressLB = address * 0x00FF;
+    
+    LATFbits.LATF4 = 0;                 //Select the memory
+    WriteSPI(WRITE_MODE);               //Send the instruction for writing to the memory
+    while(SPI1STATbits.SPITBF);         //Wait until the data is transmitted
+    
+    
+    WriteSPI(addressHB);                //Send the address MSByte (High Byte)
+    while(SPI1STATbits.SPITBF);         //Wait until the data is transmitted
+  
+    WriteSPI(addressLB);                //Send the address LSByte (Low Byte)
+    while(SPI1STATbits.SPITBF);         //Wait until the data is transmitted
+   
+    WriteSPI(data);                     //Send the data to be written
+    while(SPI1STATbits.SPITBF);         //Wait until the data is transmitted
+    
+    LATFbits.LATF4 = 1;                 //Deselect the memory
+    
+    //Dummy Read
+    throwaway = SPI1BUF;
+ 
+}
+
+
+/**
+ * Reads the data from memory at the given address.
+ * @param address the address to read from
+ * @return the data located in the given address in memory
+ */
+unsigned char mem_read(unsigned short address)
+{
+    //Variable to store the data read by the memory
+    unsigned int tmp = 0;
+    
+    unsigned char addressHB = (address & 0xFF00) >> 8;
+    unsigned char addressLB = address * 0x00FF;
+    
+    LATFbits.LATF4 = 0;             //Select the memory
+    WriteSPI(READ_MODE);            //Send the instruction for reading from memory
+    while(SPI1STATbits.SPITBF);     //Wait until the data is transmitted
+    
+    WriteSPI(addressHB);            //Send the address MSByte (High Byte)
+    while(SPI1STATbits.SPITBF);     //Wait until the data is transmitted
+    
+    
+    WriteSPI(addressLB);            //Send the address LSByte (Low Byte)
+    while(SPI1STATbits.SPITBF);     //Wait until the data is transmitted
+
+    tmp = WriteSPI(0x00);           //Dummy Write to keep the clock running, reads the data sent by the memory
+ 
+    LATFbits.LATF4 = 1;             //Deselect the memory
+    return tmp;                     //Returns the data read from memory
+}
+
+/**
+ * Closes the SPI module.
+ */
+void mem_close (void)
+{
+    CloseSPI1();
+}
+
 /**
  * Sets the timer period. Used for counting time passed.
  * @param period the period of the signal (the time to be counted)
@@ -298,192 +766,6 @@ void configureADC(){
     IEC0bits.ADIE=1;
 }
 
-
-/**
- * Interrupt Service Routine for the Record button.
- */
-void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
-{
-    //Turn off interrupt flag
-      _INT1IF = 0;      
-      
-    //If the system was recording, set flags to stop recording and play the recorded track.
-    if(recording[menuPointer] == 1){
-       recording[menuPointer] = 0;
-     sampleIndex = 0;
-     recorded[menuPointer]= 1;
-     LATDbits.LATD0 = 0;
-     play = 1;
-     LATDbits.LATD1 = 1;
-     //T1CONbits.TON = 0;  
-    }
-    else{
-        //if not playing, reset recorded signal
-        if(play==0){
-            recorded[menuPointer] = 0;
-            memset(recordedSignal[menuPointer], 0, sizeof recordedSignal[menuPointer]);
-        }
-        //Set flags for recording, and reset the timer
-        recording[menuPointer] = 1;
-        LATDbits.LATD0 = 1;
-        TMR1 = 0x00;
-       T1CONbits.TON = 1;  
-
-    }
-}
-
-/**
- * Interrupt Service Routine for the Play/Pause button.
- */
-void __attribute__((interrupt,no_auto_psv)) _INT2Interrupt( void )
-{
-    //Turn off the interrupt
-    _INT2IF = 0;      
-     
-    //Toggle the Play/Pause status, and the corresponding LED
-    //only if there is something recorded
-    if(recorded[menuPointer]==1){
-        play ^= 0x01; 
-        LATDbits.LATD1 = ~LATDbits.LATD1;
-    }
-}
-
-/**
- * Interrupt Service Routine for the Select button.
- */
-void __attribute__((interrupt,no_auto_psv)) _INT0Interrupt( void )
-{
-    //Turn off the interrupt
-    _INT0IF = 0;      
-     
-    //Output selected track
-    
-}
-
-/**
- * Interrupt Service Routine for the Timer module.
- */
-void __attribute__((interrupt,no_auto_psv)) _T1Interrupt( void )
-{
-    //Turn off interrupt flag
-    _T1IF = 0;   
-    
-    /*If recording, time limit has been reached. Set flags to stop recording 
-     and play the recorded signal*/
-    if(recording[menuPointer] == 1){
-        recording[menuPointer] = 0;
-        if(recorded[menuPointer]==0){ // first time recording, reset sample index to replay
-           sampleIndex = 0;
-           endIndex = ramPointer;
-        }
-        recorded[menuPointer]= 1;
-        ramPointer = 0;
-        LATDbits.LATD0 = 0;
-        play = 1;
-        LATDbits.LATD1 = 1;
-    }
-     //T1CONbits.TON = 0;  
-    
-}
-
-/**
- * Interrupt Service Routine for the Analog-to-Digital Converter sampling/converting process.
- */
-void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
-{
-    //Read a sample of the analog input from the ADC buffer
-     data12bit = ADCBUF0; 
-     data8bit = (unsigned char)(data12bit * (255.0/4095.0));
-     //bypass
-     mixedSignal = data8bit;
-     
-     //Get BPM value
-    bpm = ADCBUF1;
-    
-    //Apply BPM value
-    if(bpm > 3000){
-        bpmStep = 4;
-    }
-    else if(bpm > 1500){
-        bpmStep = 2;
-    }
-    else{
-        bpmStep = 1;
-    }
-    
-     //If the system is recording, save the signal to internal memory.
-    if(recording[menuPointer] == 1){
-        
-        recordedSignal[menuPointer][sampleIndex] = data8bit;
-        
-        //Interpolate missing values to average transition
-        if(bpmStep >= 2 && sampleIndex > 0){
-            
-            recordedSignal[menuPointer][sampleIndex - bpmStep/2] = 
-                (recordedSignal[menuPointer][sampleIndex - bpmStep] 
-               + recordedSignal[menuPointer][sampleIndex])         / 2;
-            
-            if(bpmStep >= 4){
-                recordedSignal[menuPointer][sampleIndex - 3*bpmStep/4] =
-                    (recordedSignal[menuPointer][sampleIndex - bpmStep]
-                   + recordedSignal[menuPointer][sampleIndex - bpmStep/2]) /2;
-                
-                recordedSignal[menuPointer][sampleIndex - bpmStep/4] = 
-                    (recordedSignal[menuPointer][sampleIndex - bpmStep/2]
-                   + recordedSignal[menuPointer][sampleIndex]) / 2;
-            }
-        }
-        
-        sampleIndex = (sampleIndex+bpmStep)%PAGE;
-        if(sampleIndex == 0){
-            ramWrite = 1;
-        }
-        //endIndex += bpmStep;
-
-    }
-    //If not recording, and nothing has been recorded yet, bypass the input signal.
-    else{
-        
-        /*If there is a signal recorded, and the Play button is activated, mix both the
-     recorded signal and the input signal*/
-        if(play == 1){
-            if(recorded[0]==1){
-                mixedSignal = mixedSignal + recordedSignal[0][sampleIndex];
-            }
-            if(recorded[1]==1){
-                mixedSignal = mixedSignal + recordedSignal[1][sampleIndex];
-            }
-            if(recorded[2]==1){
-                mixedSignal = mixedSignal + recordedSignal[2][sampleIndex];
-            }
-            if(recorded[3]==1){
-                mixedSignal = mixedSignal + recordedSignal[3][sampleIndex];
-            }
-            sampleIndex = (sampleIndex+bpmStep)%PAGE;
-            if(sampleIndex == 0){
-                ramRead = 1;
-            }
-        }
-    }
-     
-    
-    //Get Volume value
-    vol = ADCBUF2;
-    
-    //Apply volume value
-    mixedSignal = (unsigned char)(mixedSignal * (vol/2048.0));
-    
-    //Output the digital signal to the DAC (converting 12-bit to 8-bit, might be changed later)
-    
-    // Shift RB6 & RB7 to RB8 & RB9 respectively
-    int shift8bit = (mixedSignal << 2) & 0x300; //0011 0000 0000
-    LATB = mixedSignal | shift8bit;    
-
-    //Turn off interrupt flag
-    IFS0bits.ADIF = 0;  
-    
-}
-
 void updateMenuPointer(){
     if(menuPointer==0) firstRow();
     else if(menuPointer==1) secondRow();
@@ -505,113 +787,3 @@ void goDownMenu(){
     if(menuPointer >= NUMBER_OF_TRACKS)
         menuPointer = NUMBER_OF_TRACKS - 1 ;
 }
-
-/*
- * Main function of the program.
- * 
- * Pins:
- * RD0 -> LED Record
- * RD1 -> LED Play/Pause
- * RD2 -> Up Button
- * RD3 -> Down Button
- * RD8 -> Rec Button
- * RD9 -> Play/Pause
- * RB9-RB0 -> D7-D0 DAC
- * RB10 -> Analog Signal Input
- * RB11 -> Analog BPM Input
- * RB12 -> Analog Volume Input
- * RA11 -> Select Button
- */
-int main(int argc, char** argv) {
-    //Set ports and peripherals
-    //initializeLCD();
-    initializeTimer();
-    initializePorts();
-    configureADC();
-    mem_init();
-    
-    //Turn on the timer module
-    T1CONbits.TON = 1;
-    
-    //Turn on the ADC module
-    ADCON1bits.ADON = 1;
-   
-    //clearDisplay();
-    menuPointer = 0;
-    
-    while(1){
-        //polling to write to RAM
-        if(ramWrite){
-            for(i=0;i<PAGE;i++){
-                temp[i] = recordedSignal[menuPointer][i];
-            }
-            for(i=0;i<PAGE;i++){
-                mem_write(ramPointer*PAGE,temp[i]);
-            }
-            ramPointer = (ramPointer+1) % (SPACE_LIMIT / PAGE);
-            ramWrite = 0;
-        }
-        if(ramRead){
-            for(i=0;i<PAGE;i++){
-                temp[i] = mem_read(ramPointer*PAGE + i);
-            }
-            ramPointer = (ramPointer+1) % endIndex;
-            ramRead = 0;
-        }
-        /*
-        //LCD Button Polling (To be completed)
-        if (!recorded[menuPointer] & !emptyWritten[menuPointer]){
-            updateMenuPointer();
-            writeMessage(menu[0]);
-            emptyWritten[menuPointer] = 1;
-            recWritten[menuPointer] = 0;
-        }
-        // LCD Process #0
-        else if(recording[menuPointer] & !recWritten[menuPointer]){
-            updateMenuPointer();
-            
-            writeMessage(menu[1]);
-            recWritten[menuPointer] = 1;
-            trackWritten[menuPointer] = 0;
-        }
-        
-        // LCD Process #1
-        else if(recorded[menuPointer] & !trackWritten[menuPointer]){
-            updateMenuPointer();
-            writeMessage(menu[4]);
-            char buffer[50];
-            sprintf(buffer,"%d        ",menuPointer+1);
-            writeMessage(buffer);
-            
-            emptyWritten[menuPointer] = 0;
-            trackWritten[menuPointer] = 1;
-            
-        }
-        
-        //LCD button check
-        // Up
-        if(PORTDbits.RD2 == 0){
-            
-            goUpMenu();
-            updateMenuPointer();
-            updateCursor();
-        }
-        //Down
-        if(PORTDbits.RD3 == 0){
-            goDownMenu();
-            updateMenuPointer();
-            updateCursor();
-        }
-        */
-        
-        /*bpmRatio = bpm / 2047.5;
-        char buffer[50];
-        sprintf(buffer,"%.2f",bpmRatio);
-        clearDisplay();
-        writeMessage(buffer);*/
-        
-    
-    }
-    return (EXIT_SUCCESS);
-}
-

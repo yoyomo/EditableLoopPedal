@@ -5,11 +5,8 @@
  * Created on November 11, 2016, 2:28 PM
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <spi.h>
-#include <p30f4013.h>
-#include "mem23k256.h"
+
 
 
 //Defines the possible instructions that can be sent to the memory
@@ -32,7 +29,7 @@ unsigned char throwaway;
  * @param data_out the data to be written to memory
  * @return the value returned by the memory
  */
-static unsigned char WriteSPI(unsigned int data_out)
+static unsigned char WriteSPI(unsigned char data_out)
 {   
     if (SPI1CONbits.MODE16)          /* SPI in 16-bit mode*/
         SPI1BUF = data_out;
@@ -75,7 +72,7 @@ void mem_init (void)
                             CLK_POL_ACTIVE_HIGH &  //CKP:    0 = SS pin not used by module. Pin controlled by port function
                             MASTER_ENABLE_ON &     //MSTEN:  1 = Master mode
                             SEC_PRESCAL_1_1 &      //SPRE<2:0>: Secondary Prescale 1:1
-                            PRI_PRESCAL_1_1;       //PPRE<1:0> Primary Prescale 4:1
+                            PRI_PRESCAL_4_1;       //PPRE<1:0> Primary Prescale 4:1
     
     
     //Sets the configuration values for the SPI1STAT register
@@ -171,4 +168,3 @@ void mem_close (void)
 {
     CloseSPI1();
 }
-
