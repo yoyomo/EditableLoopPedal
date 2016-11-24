@@ -51,17 +51,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=main.c ../LCD_4bit_Test.X/LCD_4bits.c
+SOURCEFILES_QUOTED_IF_SPACED=main.c LCD_4bits.c
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/main.o ${OBJECTDIR}/_ext/363166433/LCD_4bits.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/main.o.d ${OBJECTDIR}/_ext/363166433/LCD_4bits.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/main.o ${OBJECTDIR}/LCD_4bits.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/main.o.d ${OBJECTDIR}/LCD_4bits.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/main.o ${OBJECTDIR}/_ext/363166433/LCD_4bits.o
+OBJECTFILES=${OBJECTDIR}/main.o ${OBJECTDIR}/LCD_4bits.o
 
 # Source Files
-SOURCEFILES=main.c ../LCD_4bit_Test.X/LCD_4bits.c
+SOURCEFILES=main.c LCD_4bits.c
 
 
 CFLAGS=
@@ -95,12 +95,12 @@ ${OBJECTDIR}/main.o: main.c  nbproject/Makefile-${CND_CONF}.mk
 	${MP_CC} $(MP_EXTRA_CC_PRE)  main.c  -o ${OBJECTDIR}/main.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/main.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_PK3=1    -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off  
 	@${FIXDEPS} "${OBJECTDIR}/main.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
-${OBJECTDIR}/_ext/363166433/LCD_4bits.o: ../LCD_4bit_Test.X/LCD_4bits.c  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} "${OBJECTDIR}/_ext/363166433" 
-	@${RM} ${OBJECTDIR}/_ext/363166433/LCD_4bits.o.d 
-	@${RM} ${OBJECTDIR}/_ext/363166433/LCD_4bits.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../LCD_4bit_Test.X/LCD_4bits.c  -o ${OBJECTDIR}/_ext/363166433/LCD_4bits.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/363166433/LCD_4bits.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_PK3=1    -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off  
-	@${FIXDEPS} "${OBJECTDIR}/_ext/363166433/LCD_4bits.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
+${OBJECTDIR}/LCD_4bits.o: LCD_4bits.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/LCD_4bits.o.d 
+	@${RM} ${OBJECTDIR}/LCD_4bits.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  LCD_4bits.c  -o ${OBJECTDIR}/LCD_4bits.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/LCD_4bits.o.d"      -g -D__DEBUG -D__MPLAB_DEBUGGER_PK3=1    -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off  
+	@${FIXDEPS} "${OBJECTDIR}/LCD_4bits.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 else
 ${OBJECTDIR}/main.o: main.c  nbproject/Makefile-${CND_CONF}.mk
@@ -110,12 +110,12 @@ ${OBJECTDIR}/main.o: main.c  nbproject/Makefile-${CND_CONF}.mk
 	${MP_CC} $(MP_EXTRA_CC_PRE)  main.c  -o ${OBJECTDIR}/main.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/main.o.d"        -g -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off  
 	@${FIXDEPS} "${OBJECTDIR}/main.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
-${OBJECTDIR}/_ext/363166433/LCD_4bits.o: ../LCD_4bit_Test.X/LCD_4bits.c  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} "${OBJECTDIR}/_ext/363166433" 
-	@${RM} ${OBJECTDIR}/_ext/363166433/LCD_4bits.o.d 
-	@${RM} ${OBJECTDIR}/_ext/363166433/LCD_4bits.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE)  ../LCD_4bit_Test.X/LCD_4bits.c  -o ${OBJECTDIR}/_ext/363166433/LCD_4bits.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/_ext/363166433/LCD_4bits.o.d"        -g -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off  
-	@${FIXDEPS} "${OBJECTDIR}/_ext/363166433/LCD_4bits.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
+${OBJECTDIR}/LCD_4bits.o: LCD_4bits.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/LCD_4bits.o.d 
+	@${RM} ${OBJECTDIR}/LCD_4bits.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  LCD_4bits.c  -o ${OBJECTDIR}/LCD_4bits.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MMD -MF "${OBJECTDIR}/LCD_4bits.o.d"        -g -omf=elf -DXPRJ_default=$(CND_CONF)  -legacy-libc  $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off  
+	@${FIXDEPS} "${OBJECTDIR}/LCD_4bits.o.d" $(SILENT)  -rsi ${MP_CC_DIR}../ 
 	
 endif
 

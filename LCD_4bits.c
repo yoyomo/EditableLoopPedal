@@ -1,5 +1,4 @@
 #include <p30f4013.h>
-#include <string.h>
 
 #include "LCD_4bits.h"
 /*
@@ -16,13 +15,17 @@ DB4 RF0
 */
 
   int wait;
-
-
+  int charIndex;
+  int charValue;
+  int init;
 /////////////////////// LCD Functions //////////////////////////////////////////
 //Controls the LCD's Enable pin. 
 void enableSwitch(){
   LATFbits.LATF5 = 1;
-  for(wait=500; wait > 0; wait--);
+  if(init)
+    for(wait=500; wait > 0; wait--);
+  else
+      for(wait=50; wait > 0; wait--);
   LATFbits.LATF5 = 0;
 }
 
@@ -42,14 +45,20 @@ void writeData(){
   enableSwitch();
 }
 
+void writeHex(int value){
+    LATF = (value & 0xF0) >> 4;
+    writeData();
+    LATF = value & 0x0F;
+    writeData();
+}
 
 //Writes a character to the LCD display (In 4-bit mode, data is sent in two 
 //parts, the Most Significant Nibble first, and then the Least Significant Nibble
 void writeCharacter(char letra){
-  int value = (int) letra;
-  LATF = (value & 0xF0) >> 4;
+  charValue = (int) letra;
+  LATF = (charValue & 0xF0) >> 4;
   writeData();
-  LATF = value & 0x0F;
+  LATF = charValue & 0x0F;
   writeData();
   //for(wait=500; wait > 0; wait--); 
 }
@@ -64,9 +73,9 @@ void writeCommand(int command){
 
 //Writes a message (set of characters) to the LCD display
 void writeMessage(char* message){
-  int i =0 ;
-  while(message[i] != '\0'){
-    writeCharacter(message[i++]);
+  charIndex =0 ;
+  while(message[charIndex] != '\0'){
+    writeCharacter(message[charIndex++]);
   }
 }
 
@@ -98,6 +107,23 @@ void bottom(){
     writeCommand(BOTTOM_ROW1);
     writeCommand(BOTTOM_ROW2);
 }
+void firstRow(){
+    writeCommand(FIRST_ROW1);
+    writeCommand(FIRST_ROW2);
+}
+void secondRow(){
+    writeCommand(SECOND_ROW1);
+    writeCommand(SECOND_ROW2);
+}
+void thirdRow(){
+    writeCommand(THIRD_ROW1);
+    writeCommand(THIRD_ROW2);
+}
+void fourthRow(){
+    writeCommand(FOURTH_ROW1);
+    writeCommand(FOURTH_ROW2);
+}
+
 void cursorRight(){
     writeCommand(CURSOR_RIGHT1);
     writeCommand(CURSOR_RIGHT2);
@@ -126,13 +152,14 @@ void initLCD(){
   TRISFbits.TRISF1 = 0;
   TRISFbits.TRISF0 = 0;
   
+  init = 1;
   writeCommand(FUNCTION_SET);
   functionSet();
   functionSet();
   display();
   clearDisplay();
   entryMode();
-  
+  init = 0;
 }
 
 

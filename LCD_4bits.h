@@ -1,5 +1,3 @@
-#include <p30f4013.h>
-#include <string.h>
 
 //LCD Command Definition
 #define FUNCTION_SET 0x02
@@ -15,6 +13,15 @@
 #define TOP_ROW2 0x00
 #define BOTTOM_ROW1 0x0C
 #define BOTTOM_ROW2 0x00
+
+#define FIRST_ROW1 0x08
+#define FIRST_ROW2 0x00
+#define SECOND_ROW1 0x0C
+#define SECOND_ROW2 0x00
+#define THIRD_ROW1 0x09
+#define THIRD_ROW2 0x04
+#define FOURTH_ROW1 0x0D
+#define FOURTH_ROW2 0x04
 
 #define CURSOR_RIGHT1 0x01
 #define CURSOR_RIGHT2 0x04
@@ -50,6 +57,7 @@ void writeInstruction();
 //Sets the LCD operation mode to Data Mode
 void writeData();
 
+void writeHex(int value);
 
 //Writes a character to the LCD display (In 4-bit mode, data is sent in two 
 //parts, the Most Significant Nibble first, and then the Least Significant Nibble
@@ -70,6 +78,10 @@ void clearDisplay();
 void entryMode();
 void top();
 void bottom();
+void firstRow();
+void secondRow();
+void thirdRow();
+void fourthRow();
 void cursorRight();
 void cursorLeft();
 void shiftRight();
