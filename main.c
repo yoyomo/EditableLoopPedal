@@ -13,8 +13,8 @@
 
 //#define SPACE_LIMIT 500
 #define SPACE_LIMIT 8191
-#define PAGE 32
-#define NUMBER_OF_TRACKS 4
+#define PAGE 512
+#define NUMBER_OF_TRACKS 1
 //Defines the possible instructions that can be sent to the memory
 #define READ_MODE 0x03
 #define WRITE_MODE 0x02
@@ -61,6 +61,8 @@ int i;
 //memory
 unsigned char throwaway;
 int track;
+int offset = PAGE;
+int lastWrite;
 
 /*******************************************************************************
  ********************************** Functions **********************************
@@ -77,8 +79,8 @@ void initializePorts();
 void configureADC();
 void updateMenuPointer();
 void updateCursor();
-void goUpMenu();
-void goDownMenu();
+void goUpMenu(void);
+void goDownMenu(void);
 
 /*******************************************************************************
  ********************************* Interrupts **********************************
@@ -110,7 +112,10 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
         //if not playing, reset recorded signal
         if(play==0){
             recorded[menuPointer] = 0;
-            memset(recordedSignal[menuPointer], 0, sizeof recordedSignal[menuPointer]);
+            sampleIndex = 0;
+            ramPointer = 0;
+            endIndex = (SPACE_LIMIT / PAGE);
+            //memset(recordedSignal[menuPointer], 0, sizeof recordedSignal[menuPointer]);
         }
         //Set flags for recording, and reset the timer
         recording[menuPointer] = 1;
@@ -160,16 +165,26 @@ void __attribute__((interrupt,no_auto_psv)) _T1Interrupt( void )
     /*If recording, time limit has been reached. Set flags to stop recording 
      and play the recorded signal*/
     if(recording[menuPointer] == 1){
-        recording[menuPointer] = 0;
+        
         if(recorded[0]==0){ // first time recording, reset sample index to replay
-           sampleIndex = 0;
            endIndex = ramPointer + 1;
+           offset = sampleIndex;
+           
         }
-        recorded[menuPointer]= 1;
-        ramPointer = 0;
-        LATDbits.LATD0 = 0;
-        play = 1;
-        LATDbits.LATD1 = 1;
+        if(recorded[menuPointer]==0){
+           accessRAM = 1;
+           lastWrite = 1;
+        }
+        else{
+            recording[menuPointer] = 0;
+            recorded[menuPointer]= 1;
+            sampleIndex = 0;
+            ramPointer = 0;
+            i=0;
+            LATDbits.LATD0 = 0;
+            play = 1;
+            LATDbits.LATD1 = 1;
+        }
     }
      //T1CONbits.TON = 0;  
     
@@ -300,18 +315,37 @@ int main(int argc, char** argv) {
         //polling to write to RAM
         if(accessRAM){
             for(i=0;i<PAGE;i++){
-                if(recording[menuPointer]){
-                    mem_write((ramPointer*PAGE + i) + (menuPointer*SPACE_LIMIT),
-                            recordedSignal[menuPointer][i]);
+                if(ramPointer + 1 == endIndex){
+                        if(i>offset) break;
                 }
+                if(recording[menuPointer]){
+                    
+                    mem_write(((ramPointer*PAGE + i) + (menuPointer*SPACE_LIMIT)),
+                            recordedSignal[menuPointer][i]);
+                    
+                }
+                
                 for(track = 0; track < NUMBER_OF_TRACKS; track++){
                     if(recorded[track] && !recording[track]){
                         recordedSignal[track][i] = 
                             mem_read((ramPointer*PAGE + i) + (track*SPACE_LIMIT));
                     }
                 }
+                
             }
+            if(lastWrite){
+                recording[menuPointer] = 0;
+                recorded[menuPointer]= 1;
+                sampleIndex = 0;
+                ramPointer = 0;
+                LATDbits.LATD0 = 0;
+                play = 1;
+                LATDbits.LATD1 = 1;
+                lastWrite = 0;
+            }
+            
             ramPointer = (ramPointer + 1) % endIndex;
+            __delay_us(500);
             accessRAM = 0;
         }
         /*
@@ -358,8 +392,8 @@ int main(int argc, char** argv) {
             updateMenuPointer();
             updateCursor();
         }
-        */
         
+        */
         /*bpmRatio = bpm / 2047.5;
         char buffer[50];
         sprintf(buffer,"%.2f",bpmRatio);
@@ -458,7 +492,7 @@ void mem_init (void)
 void mem_write(unsigned short address, unsigned char data)
 {
     unsigned char addressHB = (address & 0xFF00) >> 8;
-    unsigned char addressLB = address * 0x00FF;
+    unsigned char addressLB = address & 0x00FF;
     
     LATFbits.LATF4 = 0;                 //Select the memory
     WriteSPI(WRITE_MODE);               //Send the instruction for writing to the memory
@@ -493,7 +527,7 @@ unsigned char mem_read(unsigned short address)
     unsigned int tmp = 0;
     
     unsigned char addressHB = (address & 0xFF00) >> 8;
-    unsigned char addressLB = address * 0x00FF;
+    unsigned char addressLB = address & 0x00FF;
     
     LATFbits.LATF4 = 0;             //Select the memory
     WriteSPI(READ_MODE);            //Send the instruction for reading from memory
@@ -759,7 +793,7 @@ void configureADC(){
     IFS0bits.ADIF=1;
     IEC0bits.ADIE=1;
 }
-
+/*
 void updateMenuPointer(){
     if(menuPointer==0) firstRow();
     else if(menuPointer==1) secondRow();
@@ -773,11 +807,12 @@ void updateCursor(){
     }
 }
 void goUpMenu(){
-    menuPointer--;
+    menuPointer = menuPointer - 1;
     if(menuPointer<0) menuPointer = 0;
 }
 void goDownMenu(){
-    menuPointer++;
+    menuPointer = menuPointer + 1;
     if(menuPointer >= NUMBER_OF_TRACKS)
         menuPointer = NUMBER_OF_TRACKS - 1 ;
 }
+*/
