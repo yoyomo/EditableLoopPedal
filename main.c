@@ -52,7 +52,7 @@ char *menu[5] = {
     "Delete         ",
     "Track "
 };
-int menuPointer;
+const int menuPointer;
 int recWritten[NUMBER_OF_TRACKS];
 int trackWritten[NUMBER_OF_TRACKS];
 int emptyWritten[NUMBER_OF_TRACKS];
@@ -264,7 +264,7 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     vol = ADCBUF2;
     
     //Apply volume value
-    mixedSignal = (unsigned char)(mixedSignal * (vol/2048.0));
+    //mixedSignal = (unsigned char)(mixedSignal * (vol/2048.0));
     
     //Output the digital signal to the DAC (converting 12-bit to 8-bit, might be changed later)
     
@@ -309,7 +309,7 @@ int main(int argc, char** argv) {
     ADCON1bits.ADON = 1;
    
     //clearDisplay();
-    menuPointer = 0;
+    //menuPointer = 0;
     
     while(1){
         //polling to write to RAM
@@ -333,7 +333,9 @@ int main(int argc, char** argv) {
                 }
                 
             }
-            if(lastWrite){
+            ramPointer = (ramPointer + 1) % endIndex;
+            
+            if(lastWrite || ramPointer == 0){
                 recording[menuPointer] = 0;
                 recorded[menuPointer]= 1;
                 sampleIndex = 0;
@@ -344,8 +346,8 @@ int main(int argc, char** argv) {
                 lastWrite = 0;
             }
             
-            ramPointer = (ramPointer + 1) % endIndex;
-            __delay_us(500);
+          
+            //__delay_us(250);
             accessRAM = 0;
         }
         /*
@@ -441,10 +443,10 @@ void mem_init (void)
     TRISFbits.TRISF6 = 0;        //Output RF6/SCK1
     TRISFbits.TRISF2 = 1;        //Input  RF2/SDI1
     TRISFbits.TRISF3 = 0;        //Output RF3/SDO1
-    TRISFbits.TRISF4 = 0;       //Output  RF4/Mem CS
+    TRISFbits.TRISF5 = 0;       //Output  RF5/Mem CS
     
     //Deselects the memory (memory in idle mode)
-    LATFbits.LATF4 = 1;
+    LATFbits.LATF5 = 1;
     
     //Sets the configuration values for the SPI1CON register
     SPICONValue =           FRAME_ENABLE_OFF &     //FRMEN:  0 = Framed SPI support disabled
@@ -469,14 +471,14 @@ void mem_init (void)
     OpenSPI1(SPICONValue, SPISTATValue);
     
     //Initialize the Memory's Status Register
-    LATFbits.LATF4 = 0;             //Select the memory
+    LATFbits.LATF5 = 0;             //Select the memory
     WriteSPI(WRITE_SR);             //Send the instruction for writing to the memory Status Register
     while(SPI1STATbits.SPITBF);     //Wait until the data is transmitted
     
     WriteSPI((char)1);              //Send the value for the Status Register (8-bit mode, ignore HOLD pin)
     while(SPI1STATbits.SPITBF);     //Wait until the data is transmitted
    
-    LATFbits.LATF4 = 1;             //Deselect the memory
+    LATFbits.LATF5 = 1;             //Deselect the memory
     
     
     //Dummy Read
@@ -494,7 +496,7 @@ void mem_write(unsigned short address, unsigned char data)
     unsigned char addressHB = (address & 0xFF00) >> 8;
     unsigned char addressLB = address & 0x00FF;
     
-    LATFbits.LATF4 = 0;                 //Select the memory
+    LATFbits.LATF5 = 0;                 //Select the memory
     WriteSPI(WRITE_MODE);               //Send the instruction for writing to the memory
     while(SPI1STATbits.SPITBF);         //Wait until the data is transmitted
     
@@ -508,7 +510,7 @@ void mem_write(unsigned short address, unsigned char data)
     WriteSPI(data);                     //Send the data to be written
     while(SPI1STATbits.SPITBF);         //Wait until the data is transmitted
     
-    LATFbits.LATF4 = 1;                 //Deselect the memory
+    LATFbits.LATF5 = 1;                 //Deselect the memory
     
     //Dummy Read
     throwaway = SPI1BUF;
@@ -529,7 +531,7 @@ unsigned char mem_read(unsigned short address)
     unsigned char addressHB = (address & 0xFF00) >> 8;
     unsigned char addressLB = address & 0x00FF;
     
-    LATFbits.LATF4 = 0;             //Select the memory
+    LATFbits.LATF5 = 0;             //Select the memory
     WriteSPI(READ_MODE);            //Send the instruction for reading from memory
     while(SPI1STATbits.SPITBF);     //Wait until the data is transmitted
     
@@ -542,7 +544,7 @@ unsigned char mem_read(unsigned short address)
 
     tmp = WriteSPI(0x00);           //Dummy Write to keep the clock running, reads the data sent by the memory
  
-    LATFbits.LATF4 = 1;             //Deselect the memory
+    LATFbits.LATF5 = 1;             //Deselect the memory
     return tmp;                     //Returns the data read from memory
 }
 
@@ -583,8 +585,8 @@ void initializeTimer(){
     T1CONbits.TCKPS = 3;
     
     /*Set the timer period for counting purposes. Used as the record time
-    limit (1 second for now)*/
-    setTimerPeriod(6);
+    limit */
+    setTimerPeriod(4);
     
     //Clear timer interrupt flag, and enables the timer interrupt
     _T1IF = 0;
