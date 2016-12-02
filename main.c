@@ -62,6 +62,7 @@ unsigned char throwaway;
 int track;
 int offset = PAGE;
 int lastWrite;
+int selected;
 
 /*******************************************************************************
  ********************************** Functions **********************************
@@ -152,7 +153,7 @@ void __attribute__((interrupt,no_auto_psv)) _INT0Interrupt( void )
     //Turn off the interrupt
     _INT0IF = 0;      
      
-    //Output selected track
+    selected ^= 0x01; 
     
 }
 
@@ -201,7 +202,10 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     data12bit = ADCBUF0; 
     data8bit = (unsigned char)(data12bit * (255.0/4095.0));
     //bypass
-    mixedSignal = data8bit;
+    if(selected)
+        mixedSignal = 0;
+    else
+        mixedSignal = data8bit;
      
     //Get BPM value
     bpm = ADCBUF1;
@@ -399,7 +403,7 @@ int main(int argc, char** argv) {
         }
         
         */
-        if(PORTCbits.RC14 == 0){   
+       /* if(PORTCbits.RC14 == 0){   
             //writeMessage("Reseting...");
             sampleIndex = 0;
             play = 0;
@@ -421,7 +425,7 @@ int main(int argc, char** argv) {
                 emptyWritten[track] = 0;
                 
             }
-        }
+        }*/
         
     
     }
