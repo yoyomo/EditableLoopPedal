@@ -12,7 +12,7 @@
 #include "LCD_4bits.h"
 
 //#define SPACE_LIMIT 500
-#define SPACE_LIMIT 8191
+#define SPACE_LIMIT 32000
 #define PAGE 512
 #define NUMBER_OF_TRACKS 1
 //Defines the possible instructions that can be sent to the memory
@@ -297,7 +297,7 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
 int main(int argc, char** argv) {
     //Set ports and peripherals
     //initializeLCD();
-    initializeTimer();
+   // initializeTimer();
     initializePorts();
     configureADC();
     mem_init();
