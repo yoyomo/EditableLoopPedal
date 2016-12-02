@@ -5,10 +5,10 @@
 
 
 R/W GND
-E   RF5
-RS  RF4
-DB7 RF3
-DB6 RF2
+E   RB9
+RS  RB8
+DB7 RC13
+DB6 RF4
 DB5 RF1
 DB4 RF0
 
@@ -18,47 +18,63 @@ DB4 RF0
   int charIndex;
   int charValue;
   int init;
+  
 /////////////////////// LCD Functions //////////////////////////////////////////
 //Controls the LCD's Enable pin. 
 void enableSwitch(){
-  LATFbits.LATF5 = 1;
+ LATBbits.LATB9 = 1;
   if(init)
     for(wait=500; wait > 0; wait--);
   else
       for(wait=50; wait > 0; wait--);
-  LATFbits.LATF5 = 0;
+ LATBbits.LATB9 = 0;
 }
 
 
 //Sets the LCD operation mode to Instruction Mode
 void writeInstruction(){
   //LATF &= 0x0F;
-  LATFbits.LATF4 = 0;
+ LATBbits.LATB8 = 0;
   enableSwitch();
 }
 
-
+//Sends data to LCD
+void sendData(int data){
+    LATCbits.LATC13 = (data & 0x08) ? 1 :0;
+    LATFbits.LATF4 = (data & 0x04) ? 1 :0;
+    LATFbits.LATF1 = (data & 0x02) ? 1 :0;
+    LATFbits.LATF0 = (data & 0x01) ? 1 :0;
+    
+}
 //Sets the LCD operation mode to Data Mode
 void writeData(){
   //LATF &= 0x0F;
-  LATFbits.LATF4 = 1;
+ LATBbits.LATB8 = 1;
   enableSwitch();
 }
 
 void writeHex(int value){
-    LATF = (value & 0xF0) >> 4;
+    int valueHB, valueLB;
+    
+    valueHB = (value & 0xF0) >> 4;
+    sendData(valueHB);
     writeData();
-    LATF = value & 0x0F;
+    valueLB = value & 0x0F;
+    sendData(valueLB);
     writeData();
 }
 
 //Writes a character to the LCD display (In 4-bit mode, data is sent in two 
 //parts, the Most Significant Nibble first, and then the Least Significant Nibble
 void writeCharacter(char letra){
+  int valueHB, valueLB;
+  
   charValue = (int) letra;
-  LATF = (charValue & 0xF0) >> 4;
+  valueHB = (charValue & 0xF0) >> 4;
+  sendData(valueHB);
   writeData();
-  LATF = charValue & 0x0F;
+  valueLB = charValue & 0x0F;
+  sendData(valueLB);
   writeData();
   //for(wait=500; wait > 0; wait--); 
 }
@@ -66,7 +82,7 @@ void writeCharacter(char letra){
 
 //Sends a command to the LCD screen
 void writeCommand(int command){
-  LATF = command;
+  sendData(command);
   writeInstruction();
 }
 
@@ -143,12 +159,11 @@ void shiftLeft(){
 
 //LCD initialization sequence
 void initLCD(){
-  LATF = 0;
-  TRISFbits.TRISF4 = 0;
-  TRISFbits.TRISF5 = 0;
+  TRISBbits.TRISB9 = 0;
+  TRISBbits.TRISB8 = 0;
   
-  TRISFbits.TRISF3 = 0;
-  TRISFbits.TRISF2 = 0;
+  TRISCbits.TRISC13 = 0;
+  TRISFbits.TRISF4 = 0;
   TRISFbits.TRISF1 = 0;
   TRISFbits.TRISF0 = 0;
   

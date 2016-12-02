@@ -96,21 +96,13 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
       
     //If the system was recording, set flags to stop recording and play the recorded track.
     if(recording[menuPointer] == 1){
-       //recording[menuPointer] = 0;
         if(recorded[0]==0){ // first time recording, reset sample index to replay
-           //sampleIndex = 0;
            endIndex = ramPointer + 1;
            offset = sampleIndex;
         }
         
         accessRAM = 1;
-        lastWrite = 1;
-        /*recorded[menuPointer]= 1;
-        ramPointer = 0;
-        LATDbits.LATD0 = 0;
-        play = 1;
-        LATDbits.LATD1 = 1;*/
-     //T1CONbits.TON = 0;  
+        lastWrite = 1; 
     }
     else{
         //if not playing, reset recorded signal
@@ -119,7 +111,6 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
             sampleIndex = 0;
             ramPointer = 0;
             endIndex = (SPACE_LIMIT / PAGE);
-            //memset(recordedSignal[menuPointer], 0, sizeof recordedSignal[menuPointer]);
         }
         //Set flags for recording, and reset the timer
         recording[menuPointer] = 1;
@@ -271,13 +262,12 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     vol = ADCBUF2;
     
     //Apply volume value
-    //mixedSignal = (unsigned char)(mixedSignal * (vol/2048.0));
+    mixedSignal = (unsigned char)(mixedSignal * (vol/2048.0));
     
     //Output the digital signal to the DAC (converting 12-bit to 8-bit, might be changed later)
+    LATB = mixedSignal | 0x300;
     
-    // Shift RB6 & RB7 to RB8 & RB9 respectively
-    int shift8bit = (mixedSignal << 2) & 0x300; //0011 0000 0000
-    LATB = mixedSignal | shift8bit;    
+    
 
     //Turn off interrupt flag
     IFS0bits.ADIF = 0;  
@@ -303,7 +293,7 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
  */
 int main(int argc, char** argv) {
     //Set ports and peripherals
-    //initializeLCD();
+    initializeLCD();
    // initializeTimer();
     initializePorts();
     configureADC();
@@ -315,7 +305,7 @@ int main(int argc, char** argv) {
     //Turn on the ADC module
     ADCON1bits.ADON = 1;
    
-    //clearDisplay();
+    clearDisplay();
     //menuPointer = 0;
     
     while(1){
@@ -357,7 +347,7 @@ int main(int argc, char** argv) {
             //__delay_us(250);
             accessRAM = 0;
         }
-        /*
+        
         //LCD Button Polling (To be completed)
         if (!recorded[menuPointer] & !emptyWritten[menuPointer]){
             updateMenuPointer();
@@ -389,22 +379,23 @@ int main(int argc, char** argv) {
         
         //LCD button check
         // Up
-        if(PORTDbits.RD2 == 0){
+        if(PORTDbits.RD2 == 1){
             
             goUpMenu();
             updateMenuPointer();
             updateCursor();
         }
         //Down
-        if(PORTDbits.RD3 == 0){
+        if(PORTDbits.RD3 == 1){
             goDownMenu();
             updateMenuPointer();
             updateCursor();
         }
         
-        */
-       /* if(PORTCbits.RC14 == 0){   
-            //writeMessage("Reseting...");
+        
+        if(PORTCbits.RC14 == 1){   
+            writeMessage("Reseting...");
+            __delay_ms(500);
             sampleIndex = 0;
             play = 0;
             endIndex = SPACE_LIMIT / PAGE;
@@ -425,7 +416,7 @@ int main(int argc, char** argv) {
                 emptyWritten[track] = 0;
                 
             }
-        }*/
+        }
         
     
     }
@@ -637,10 +628,8 @@ void initializePorts(){
     
     /*Configure 8 output pins for the Digital-to-Analog Converter (might be 
     more later)*/
-    TRISBbits.TRISB9 = 0;
-    TRISBbits.TRISB8 = 0;
-//    TRISBbits.TRISB7 = 0;
-//    TRISBbits.TRISB6 = 0;
+    TRISBbits.TRISB7 = 0;
+    TRISBbits.TRISB6 = 0;
     TRISBbits.TRISB5 = 0;
     TRISBbits.TRISB4 = 0;
     TRISBbits.TRISB3 = 0;
@@ -673,7 +662,7 @@ void initializePorts(){
     /*Configure a digital input, and enable interrupts on the pin 
      (negative edge triggered) -> Select button*/
     TRISAbits.TRISA11 = 1;
-    _INT0EP = 1;
+    _INT0EP = 0;
     _INT0IF = 0;
     _INT0IE = 1;
 }
@@ -820,7 +809,7 @@ void configureADC(){
     IFS0bits.ADIF=1;
     IEC0bits.ADIE=1;
 }
-/*
+
 void updateMenuPointer(){
     if(menuPointer==0) firstRow();
     else if(menuPointer==1) secondRow();
@@ -842,4 +831,3 @@ void goDownMenu(){
     if(menuPointer >= NUMBER_OF_TRACKS)
         menuPointer = NUMBER_OF_TRACKS - 1 ;
 }
-*/
