@@ -56,7 +56,6 @@ const int menuPointer;
 int recWritten[NUMBER_OF_TRACKS];
 int trackWritten[NUMBER_OF_TRACKS];
 int emptyWritten[NUMBER_OF_TRACKS];
-unsigned char temp[PAGE];
 int i;
 //memory
 unsigned char throwaway;
@@ -91,21 +90,25 @@ void goDownMenu(void);
  */
 void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
 {
-    //Turn off interrupt flag
+     //Turn off interrupt flag
       _INT1IF = 0;      
       
     //If the system was recording, set flags to stop recording and play the recorded track.
     if(recording[menuPointer] == 1){
-       recording[menuPointer] = 0;
+       //recording[menuPointer] = 0;
         if(recorded[0]==0){ // first time recording, reset sample index to replay
-           sampleIndex = 0;
+           //sampleIndex = 0;
            endIndex = ramPointer + 1;
+           offset = sampleIndex;
         }
-        recorded[menuPointer]= 1;
+        
+        accessRAM = 1;
+        lastWrite = 1;
+        /*recorded[menuPointer]= 1;
         ramPointer = 0;
         LATDbits.LATD0 = 0;
         play = 1;
-        LATDbits.LATD1 = 1;
+        LATDbits.LATD1 = 1;*/
      //T1CONbits.TON = 0;  
     }
     else{
@@ -122,7 +125,6 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
         LATDbits.LATD0 = 1;
         TMR1 = 0x00;
        T1CONbits.TON = 1;  
-
     }
 }
 
@@ -396,11 +398,29 @@ int main(int argc, char** argv) {
         }
         
         */
-        /*bpmRatio = bpm / 2047.5;
-        char buffer[50];
-        sprintf(buffer,"%.2f",bpmRatio);
-        clearDisplay();
-        writeMessage(buffer);*/
+        if(PORTCbits.RC14 == 0){   
+            //writeMessage("Reseting...");
+            sampleIndex = 0;
+            play = 0;
+            endIndex = SPACE_LIMIT / PAGE;
+            ramPointer = 0;
+            accessRAM = 0;
+            bpm = 0;
+            bpmRatio = 0;
+            bpmStep = 1;
+            vol = 0;
+            offset = PAGE;
+            lastWrite = 0;
+            
+            for(track = 0; track < NUMBER_OF_TRACKS; track++){
+                recording[track] = 0;
+                recorded[track] = 0;
+                recWritten[track] = 0;
+                trackWritten[track] = 0;
+                emptyWritten[track] = 0;
+                
+            }
+        }
         
     
     }
