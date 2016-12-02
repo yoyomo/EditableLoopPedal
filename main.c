@@ -247,11 +247,12 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
         /*If there is a signal recorded, and the Play button is activated, mix both the
      recorded signal and the input signal*/
         if(play){
-            for(track = 0; track < NUMBER_OF_TRACKS; track++){
+           /* for(track = 0; track < NUMBER_OF_TRACKS; track++){
                 if(recorded[track]==1 && !recording[track]){
                     mixedSignal = mixedSignal + recordedSignal[track][sampleIndex];
                 }
-            }
+            }*/
+            mixedSignal = mixedSignal + recordedSignal[menuPointer][sampleIndex];
         }
         
         //increment local sample index
