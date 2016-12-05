@@ -9,7 +9,6 @@
 #include <string.h>
 #include <spi.h>
 #include <p30f4013.h>
-#include "LCD_4bits.h"
 
 //#define SPACE_LIMIT 500
 #define SPACE_LIMIT 32000
@@ -20,12 +19,46 @@
 #define WRITE_MODE 0x02
 #define READ_SR 0x05
 #define WRITE_SR 0x01
+
+//LCD Command Definition
+#define FUNCTION_SET 0x02
+#define FUNCTION_SET1 0x02
+#define FUNCTION_SET2 0x08
+#define DISPLAY1 0x00
+#define DISPLAY2 0x0F
+#define CLEAR_DISPLAY1 0x00
+#define CLEAR_DISPLAY2 0x01
+#define ENTRY_MODE1 0x00
+#define ENTRY_MODE2 0x06
+#define TOP_ROW1 0x08
+#define TOP_ROW2 0x00
+#define BOTTOM_ROW1 0x0C
+#define BOTTOM_ROW2 0x00
+
+#define FIRST_ROW1 0x08
+#define FIRST_ROW2 0x00
+#define SECOND_ROW1 0x0C
+#define SECOND_ROW2 0x00
+#define THIRD_ROW1 0x09
+#define THIRD_ROW2 0x04
+#define FOURTH_ROW1 0x0D
+#define FOURTH_ROW2 0x04
+
+#define CURSOR_RIGHT1 0x01
+#define CURSOR_RIGHT2 0x04
+#define CURSOR_LEFT1 0x01
+#define CURSOR_LEFT2 0x00
+#define SHIFT_RIGHT1 0x01
+#define SHIFT_RIGHT2 0x0C
+#define SHIFT_LEFT1 0x01
+#define SHIFT_LEFT2 0x08
+
 //Delay Mod
 #define FOSC    (7372800ULL)
 #define FCY     (FOSC/2)
 #include <libpic30.h>
 
-
+_FWDT(WDT_OFF);
 /*******************************************************************************
  ******************************* Global Variables ******************************
  ******************************************************************************/
@@ -52,17 +85,23 @@ char *menu[5] = {
     "Delete         ",
     "Track "
 };
-const int menuPointer;
+int menuPointer;
 int recWritten[NUMBER_OF_TRACKS];
 int trackWritten[NUMBER_OF_TRACKS];
 int emptyWritten[NUMBER_OF_TRACKS];
 int i;
 //memory
 unsigned char throwaway;
-int track;
+//int track;
 int offset = PAGE;
 int lastWrite;
 int selected;
+
+//LCD
+int wait;
+int charIndex;
+int charValue;
+int init;
 
 /*******************************************************************************
  ********************************** Functions **********************************
@@ -81,6 +120,30 @@ void updateMenuPointer();
 void updateCursor();
 void goUpMenu(void);
 void goDownMenu(void);
+
+/////////////////////// LCD Functions //////////////////////////////////////////
+void enableSwitch();
+void writeInstruction();
+void writeData();
+void writeHex(int value);
+void writeCharacter(char letra);
+void writeCommand(int command);
+void writeMessage(char* message);
+void functionSet();
+void display();
+void clearDisplay();
+void entryMode();
+void top();
+void bottom();
+void firstRow();
+void secondRow();
+void thirdRow();
+void fourthRow();
+void cursorRight();
+void cursorLeft();
+void shiftRight();
+void shiftLeft();
+void initLCD();
 
 /*******************************************************************************
  ********************************* Interrupts **********************************
@@ -242,12 +305,13 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
         /*If there is a signal recorded, and the Play button is activated, mix both the
      recorded signal and the input signal*/
         if(play){
-           /* for(track = 0; track < NUMBER_OF_TRACKS; track++){
+            int track;
+            for(track = 0; track < NUMBER_OF_TRACKS; track++){
                 if(recorded[track]==1 && !recording[track]){
                     mixedSignal = mixedSignal + recordedSignal[track][sampleIndex];
                 }
-            }*/
-            mixedSignal = mixedSignal + recordedSignal[menuPointer][sampleIndex];
+            }
+//            mixedSignal = mixedSignal + recordedSignal[menuPointer][sampleIndex];
         }
         
         //increment local sample index
@@ -264,9 +328,17 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     //Apply volume value
     mixedSignal = (unsigned char)(mixedSignal * (vol/2048.0));
     
-    //Output the digital signal to the DAC (converting 12-bit to 8-bit, might be changed later)
-    LATB = mixedSignal | 0x300;
+    //Output the digital signal to the DAC (not affecting LCD)
+    LATBbits.LATB7 = (mixedSignal & 0x80)? 1 : 0;
+    LATBbits.LATB6 = (mixedSignal & 0x40)? 1 : 0;
+    LATBbits.LATB5 = (mixedSignal & 0x20)? 1 : 0;
+    LATBbits.LATB4 = (mixedSignal & 0x10)? 1 : 0;
+    LATBbits.LATB3 = (mixedSignal & 0x08)? 1 : 0;
+    LATBbits.LATB2 = (mixedSignal & 0x04)? 1 : 0;
+    LATBbits.LATB1 = (mixedSignal & 0x02)? 1 : 0;
+    LATBbits.LATB0 = (mixedSignal & 0x01)? 1 : 0;
     
+//    LATB = mixedSignal | 0x300; // affects LCD like crazy
     
 
     //Turn off interrupt flag
@@ -290,7 +362,16 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
  * RB11 -> Analog BPM Input
  * RB12 -> Analog Volume Input
  * RA11 -> Select Button
- */
+ * R/W GND
+ * E   RB9
+ * RS  RB8
+ * DB7 RC13
+ * DB6 RF4
+ * DB5 RF1
+ * DB4 RF0
+
+*/
+
 int main(int argc, char** argv) {
     //Set ports and peripherals
     initializeLCD();
@@ -304,9 +385,9 @@ int main(int argc, char** argv) {
     
     //Turn on the ADC module
     ADCON1bits.ADON = 1;
-   
+    
     clearDisplay();
-    //menuPointer = 0;
+    menuPointer = 0;
     
     while(1){
         //polling to write to RAM
@@ -321,7 +402,7 @@ int main(int argc, char** argv) {
                             recordedSignal[menuPointer][i]);
                     
                 }
-                
+                int track;
                 for(track = 0; track < NUMBER_OF_TRACKS; track++){
                     if(recorded[track] && !recording[track]){
                         recordedSignal[track][i] = 
@@ -348,7 +429,7 @@ int main(int argc, char** argv) {
             accessRAM = 0;
         }
         
-        //LCD Button Polling (To be completed)
+        //LCD Button Polling 
         if (!recorded[menuPointer] & !emptyWritten[menuPointer]){
             updateMenuPointer();
             writeMessage(menu[0]);
@@ -372,8 +453,8 @@ int main(int argc, char** argv) {
             sprintf(buffer,"%d        ",menuPointer+1);
             writeMessage(buffer);
             
-            emptyWritten[menuPointer] = 0;
             trackWritten[menuPointer] = 1;
+            emptyWritten[menuPointer] = 0;
             
         }
         
@@ -394,13 +475,15 @@ int main(int argc, char** argv) {
         
         
         if(PORTCbits.RC14 == 1){   
-            writeMessage("Reseting...");
-            __delay_ms(500);
+            clearDisplay();
+            writeMessage("Reseting...    ");
+            
             sampleIndex = 0;
             play = 0;
             endIndex = SPACE_LIMIT / PAGE;
             ramPointer = 0;
             accessRAM = 0;
+            menuPointer = 0;
             bpm = 0;
             bpmRatio = 0;
             bpmStep = 1;
@@ -408,14 +491,16 @@ int main(int argc, char** argv) {
             offset = PAGE;
             lastWrite = 0;
             
+            int track;
             for(track = 0; track < NUMBER_OF_TRACKS; track++){
                 recording[track] = 0;
                 recorded[track] = 0;
-                recWritten[track] = 0;
-                trackWritten[track] = 0;
+                recWritten[track] = 1;
+                trackWritten[track] = 1;
                 emptyWritten[track] = 0;
-                
             }
+            
+            __delay_ms(250);
         }
         
     
@@ -808,6 +893,165 @@ void configureADC(){
     ADCON1bits.ASAM=1;
     IFS0bits.ADIF=1;
     IEC0bits.ADIE=1;
+}
+
+  
+/////////////////////// LCD Functions //////////////////////////////////////////
+//Controls the LCD's Enable pin. 
+void enableSwitch(){
+ LATBbits.LATB9 = 1;
+  if(init)
+    for(wait=1000; wait > 0; wait--);
+  else
+      for(wait=100; wait > 0; wait--);
+ LATBbits.LATB9 = 0;
+}
+
+
+//Sets the LCD operation mode to Instruction Mode
+void writeInstruction(){
+  //LATF &= 0x0F;
+ LATBbits.LATB8 = 0;
+  enableSwitch();
+}
+
+//Sends data to LCD
+void sendData(int data){
+    LATCbits.LATC13 = (data & 0x08) ? 1 :0;
+    LATFbits.LATF4 = (data & 0x04) ? 1 :0;
+    LATFbits.LATF1 = (data & 0x02) ? 1 :0;
+    LATFbits.LATF0 = (data & 0x01) ? 1 :0;
+    
+}
+//Sets the LCD operation mode to Data Mode
+void writeData(){
+  //LATF &= 0x0F;
+ LATBbits.LATB8 = 1;
+  enableSwitch();
+}
+
+void writeHex(int value){
+    int valueHB, valueLB;
+    
+    valueHB = (value & 0xF0) >> 4;
+    sendData(valueHB);
+    writeData();
+    valueLB = value & 0x0F;
+    sendData(valueLB);
+    writeData();
+}
+
+//Writes a character to the LCD display (In 4-bit mode, data is sent in two 
+//parts, the Most Significant Nibble first, and then the Least Significant Nibble
+void writeCharacter(char letra){
+  int valueHB, valueLB;
+  
+  charValue = (int) letra;
+  valueHB = (charValue & 0xF0) >> 4;
+  sendData(valueHB);
+  writeData();
+  valueLB = charValue & 0x0F;
+  sendData(valueLB);
+  writeData();
+  //for(wait=500; wait > 0; wait--); 
+}
+
+
+//Sends a command to the LCD screen
+void writeCommand(int command){
+  sendData(command);
+  writeInstruction();
+}
+
+
+//Writes a message (set of characters) to the LCD display
+void writeMessage(char* message){
+  charIndex =0 ;
+  while(message[charIndex] != '\0'){
+    writeCharacter(message[charIndex++]);
+  }
+}
+
+void functionSet(){
+    writeCommand(FUNCTION_SET1);
+    writeCommand(FUNCTION_SET2);
+}
+
+void display(){
+    writeCommand(DISPLAY1);
+    writeCommand(DISPLAY2);
+}
+
+void clearDisplay(){
+    writeCommand(CLEAR_DISPLAY1);
+    writeCommand(CLEAR_DISPLAY2);
+}
+
+void entryMode(){
+    writeCommand(ENTRY_MODE1);
+    writeCommand(ENTRY_MODE2);
+}
+
+void top(){
+    writeCommand(TOP_ROW1);
+    writeCommand(TOP_ROW2);
+}
+void bottom(){
+    writeCommand(BOTTOM_ROW1);
+    writeCommand(BOTTOM_ROW2);
+}
+void firstRow(){
+    writeCommand(FIRST_ROW1);
+    writeCommand(FIRST_ROW2);
+}
+void secondRow(){
+    writeCommand(SECOND_ROW1);
+    writeCommand(SECOND_ROW2);
+}
+void thirdRow(){
+    writeCommand(THIRD_ROW1);
+    writeCommand(THIRD_ROW2);
+}
+void fourthRow(){
+    writeCommand(FOURTH_ROW1);
+    writeCommand(FOURTH_ROW2);
+}
+
+void cursorRight(){
+    writeCommand(CURSOR_RIGHT1);
+    writeCommand(CURSOR_RIGHT2);
+}
+void cursorLeft(){
+    writeCommand(CURSOR_LEFT1);
+    writeCommand(CURSOR_LEFT2);
+}
+void shiftRight(){
+    writeCommand(SHIFT_RIGHT1);
+    writeCommand(SHIFT_RIGHT2);
+}
+void shiftLeft(){
+    writeCommand(SHIFT_LEFT1);
+    writeCommand(SHIFT_LEFT2);
+}
+
+//LCD initialization sequence
+void initLCD(){
+  TRISBbits.TRISB9 = 0;
+  TRISBbits.TRISB8 = 0;
+  
+  TRISCbits.TRISC13 = 0;
+  TRISFbits.TRISF4 = 0;
+  TRISFbits.TRISF1 = 0;
+  TRISFbits.TRISF0 = 0;
+  
+  init = 1;
+  writeCommand(FUNCTION_SET);
+  functionSet();
+  functionSet();
+  display();
+  clearDisplay();
+  entryMode();
+  init = 0;
 }
 
 void updateMenuPointer(){

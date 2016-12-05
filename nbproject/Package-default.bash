@@ -10,9 +10,9 @@ CND_CONF=default
 CND_DISTDIR=dist
 TMPDIR=build/${CND_CONF}/${IMAGE_TYPE}/tmp-packaging
 TMPDIRNAME=tmp-packaging
-OUTPUT_PATH=dist/${CND_CONF}/${IMAGE_TYPE}/EditableLoopPedal1Track.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
-OUTPUT_BASENAME=EditableLoopPedal1Track.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
-PACKAGE_TOP_DIR=editablelooppedal1track.x/
+OUTPUT_PATH=dist/${CND_CONF}/${IMAGE_TYPE}/EditableLoopPedal.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+OUTPUT_BASENAME=EditableLoopPedal.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+PACKAGE_TOP_DIR=editablelooppedal/
 
 # Functions
 function checkReturnCode
@@ -57,15 +57,15 @@ mkdir -p ${TMPDIR}
 
 # Copy files and create directories and links
 cd "${TOP}"
-makeDirectory ${TMPDIR}/editablelooppedal1track.x/bin
+makeDirectory ${TMPDIR}/editablelooppedal/bin
 copyFileToTmpDir "${OUTPUT_PATH}" "${TMPDIR}/${PACKAGE_TOP_DIR}bin/${OUTPUT_BASENAME}" 0755
 
 
 # Generate tar file
 cd "${TOP}"
-rm -f ${CND_DISTDIR}/${CND_CONF}/package/editablelooppedal1track.x.tar
+rm -f ${CND_DISTDIR}/${CND_CONF}/package/editablelooppedal.tar
 cd ${TMPDIR}
-tar -vcf ../../../../${CND_DISTDIR}/${CND_CONF}/package/editablelooppedal1track.x.tar *
+tar -vcf ../../../../${CND_DISTDIR}/${CND_CONF}/package/editablelooppedal.tar *
 checkReturnCode
 
 # Cleanup

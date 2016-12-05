@@ -1,6 +1,6 @@
 #include <p30f4013.h>
 
-#include "LCD_4bits.h"
+//#include "LCD_4bits.h"
 /*
 
 
