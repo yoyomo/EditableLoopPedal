@@ -11,9 +11,9 @@
 #include <p30f4013.h>
 
 //#define SPACE_LIMIT 500
-#define SPACE_LIMIT 32000
+#define SPACE_LIMIT 16000
 #define PAGE 512
-#define NUMBER_OF_TRACKS 1
+#define NUMBER_OF_TRACKS 2
 //Defines the possible instructions that can be sent to the memory
 #define READ_MODE 0x03
 #define WRITE_MODE 0x02
@@ -116,10 +116,7 @@ void initializeLCD();
 void initializeTimer();
 void initializePorts();
 void configureADC();
-void updateMenuPointer();
-void updateCursor();
-void goUpMenu(void);
-void goDownMenu(void);
+void reset();
 
 /////////////////////// LCD Functions //////////////////////////////////////////
 void enableSwitch();
@@ -144,6 +141,10 @@ void cursorLeft();
 void shiftRight();
 void shiftLeft();
 void initLCD();
+void updateMenuPointer();
+void updateCursor();
+void goUpMenu();
+void goDownMenu();
 
 /*******************************************************************************
  ********************************* Interrupts **********************************
@@ -179,7 +180,7 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
         recording[menuPointer] = 1;
         LATDbits.LATD0 = 1;
         TMR1 = 0x00;
-       T1CONbits.TON = 1;  
+        T1CONbits.TON = 1;  
     }
 }
 
@@ -305,13 +306,19 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
         /*If there is a signal recorded, and the Play button is activated, mix both the
      recorded signal and the input signal*/
         if(play){
-            int track;
-            for(track = 0; track < NUMBER_OF_TRACKS; track++){
-                if(recorded[track]==1 && !recording[track]){
-                    mixedSignal = mixedSignal + recordedSignal[track][sampleIndex];
+            
+            if(selected){
+                mixedSignal = mixedSignal + recordedSignal[menuPointer][sampleIndex];
+            }
+            else{
+                int track;
+                for(track = 0; track < NUMBER_OF_TRACKS; track++){
+                    if(recorded[track]==1 && !recording[track]){
+                        mixedSignal = mixedSignal + recordedSignal[track][sampleIndex];
+                    }
                 }
             }
-//            mixedSignal = mixedSignal + recordedSignal[menuPointer][sampleIndex];
+            
         }
         
         //increment local sample index
@@ -386,12 +393,14 @@ int main(int argc, char** argv) {
     //Turn on the ADC module
     ADCON1bits.ADON = 1;
     
+    reset();
     clearDisplay();
     menuPointer = 0;
     
     while(1){
         //polling to write to RAM
         if(accessRAM){
+            int i;
             for(i=0;i<PAGE;i++){
                 if(ramPointer + 1 == endIndex){
                         if(i>offset) break;
@@ -412,8 +421,14 @@ int main(int argc, char** argv) {
                 
             }
             ramPointer = (ramPointer + 1) % endIndex;
-            
-            if(lastWrite || ramPointer == 0){
+            if(ramPointer == 0){
+                sampleIndex = 0;
+                ramPointer = 0;
+                if(recorded[0]==0){
+                    lastWrite = 1;
+                }
+            }
+            if(lastWrite){
                 recording[menuPointer] = 0;
                 recorded[menuPointer]= 1;
                 sampleIndex = 0;
@@ -478,29 +493,9 @@ int main(int argc, char** argv) {
             clearDisplay();
             writeMessage("Reseting...    ");
             
-            sampleIndex = 0;
-            play = 0;
-            endIndex = SPACE_LIMIT / PAGE;
-            ramPointer = 0;
-            accessRAM = 0;
-            menuPointer = 0;
-            bpm = 0;
-            bpmRatio = 0;
-            bpmStep = 1;
-            vol = 0;
-            offset = PAGE;
-            lastWrite = 0;
+            reset();
             
-            int track;
-            for(track = 0; track < NUMBER_OF_TRACKS; track++){
-                recording[track] = 0;
-                recorded[track] = 0;
-                recWritten[track] = 1;
-                trackWritten[track] = 1;
-                emptyWritten[track] = 0;
-            }
-            
-            __delay_ms(250);
+            __delay_ms(100);
         }
         
     
@@ -895,6 +890,29 @@ void configureADC(){
     IEC0bits.ADIE=1;
 }
 
+void reset(){
+    sampleIndex = 0;
+    play = 0;
+    endIndex = SPACE_LIMIT / PAGE;
+    ramPointer = 0;
+    accessRAM = 0;
+    menuPointer = 0;
+    bpm = 0;
+    bpmRatio = 0;
+    bpmStep = 1;
+    vol = 0;
+    offset = PAGE;
+    lastWrite = 0;
+
+    int track;
+    for(track = 0; track < NUMBER_OF_TRACKS; track++){
+        recording[track] = 0;
+        recorded[track] = 0;
+        recWritten[track] = 1;
+        trackWritten[track] = 1;
+        emptyWritten[track] = 0;
+    }
+}
   
 /////////////////////// LCD Functions //////////////////////////////////////////
 //Controls the LCD's Enable pin. 
@@ -1062,6 +1080,7 @@ void updateMenuPointer(){
 
 }
 void updateCursor(){
+    int i;
     for(i=0;i<15;i++){
         cursorRight();
     }

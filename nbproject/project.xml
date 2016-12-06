@@ -3,7 +3,7 @@
     <type>com.microchip.mplab.nbide.embedded.makeproject</type>
     <configuration>
         <data xmlns="http://www.netbeans.org/ns/make-project/1">
-            <name>EditableLoopPedal1Track</name>
+            <name>EditableLoopPedal</name>
             <creation-uuid>d6b10a9d-59bf-4048-822e-48ad54b0f255</creation-uuid>
             <make-project-type>0</make-project-type>
             <c-extensions>c</c-extensions>
