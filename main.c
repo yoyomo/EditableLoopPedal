@@ -73,7 +73,8 @@ int ramPointer;
 int accessRAM;
 int bpm;
 double bpmRatio;
-int bpmStep = 1;
+int bpmStep = 0;
+int setJump;
 int vol;
 //Variable used for Timer Period calculation
 const int CLOCK_FREQ = 31250;
@@ -112,6 +113,7 @@ void mem_write(unsigned short address, unsigned char data);
 unsigned char mem_read(unsigned short address);
 void mem_close (void);
 void setTimerPeriod(int period);
+void setTimerFrequency(int freq);
 void initializeLCD();
 void initializeTimer();
 void initializePorts();
@@ -267,13 +269,16 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     
     //Apply BPM value
     if(bpm > 3000){
-        bpmStep = 4;
-    }
-    else if(bpm > 1500){
         bpmStep = 2;
     }
+    else if(bpm > 1500){
+        bpmStep = 0;
+    }
     else{
-        bpmStep = 1;
+        if(setJump){
+            bpmStep = -1;
+            setJump = 0;
+        }
     }
     
     //If playing and/or recording update read and/or write variables
@@ -282,30 +287,15 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
         if(recording[menuPointer]){
 
             recordedSignal[menuPointer][sampleIndex] = data8bit;
-
-            //Interpolate missing values to average transition
-            if(bpmStep >= 2 && sampleIndex > 0){
-
-                recordedSignal[menuPointer][sampleIndex - bpmStep/2] = 
-                    (recordedSignal[menuPointer][sampleIndex - bpmStep] 
-                   + recordedSignal[menuPointer][sampleIndex])         / 2;
-
-                if(bpmStep >= 4){
-                    recordedSignal[menuPointer][sampleIndex - 3*bpmStep/4] =
-                        (recordedSignal[menuPointer][sampleIndex - bpmStep]
-                       + recordedSignal[menuPointer][sampleIndex - bpmStep/2]) /2;
-
-                    recordedSignal[menuPointer][sampleIndex - bpmStep/4] = 
-                        (recordedSignal[menuPointer][sampleIndex - bpmStep/2]
-                       + recordedSignal[menuPointer][sampleIndex]) / 2;
-                }
-            }
+            bpmStep = 0; //ignore knob while writing
 
         }
 
         /*If there is a signal recorded, and the Play button is activated, mix both the
      recorded signal and the input signal*/
         if(play){
+            
+            
             
             if(selected){
                 mixedSignal = mixedSignal + recordedSignal[menuPointer][sampleIndex];
@@ -321,8 +311,19 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
             
         }
         
-        //increment local sample index
-        sampleIndex = (sampleIndex+bpmStep)%PAGE;
+        if(bpmStep==2){
+            sampleIndex = (sampleIndex+bpmStep)%PAGE;
+
+        }
+        else if(bpmStep==-1){
+            bpmStep = bpmStep + 1;
+        }
+        else if(bpmStep==0){
+            //increment local sample index
+            sampleIndex = (sampleIndex+1)%PAGE;
+            setJump = 1;
+        }
+        
         if(sampleIndex == 0){
             accessRAM = 1;
         }
@@ -396,14 +397,17 @@ int main(int argc, char** argv) {
     reset();
     clearDisplay();
     menuPointer = 0;
-    
+
     while(1){
         //polling to write to RAM
         if(accessRAM){
             int i;
             for(i=0;i<PAGE;i++){
                 if(ramPointer + 1 == endIndex){
-                        if(i>offset) break;
+                        if(i>offset) {
+                            i = PAGE;
+                            break;
+                        }
                 }
                 if(recording[menuPointer]){
                     
@@ -661,6 +665,11 @@ void setTimerPeriod(int period){
      * into account the dsPIC operating frequency*/
     PR1 = (period * (CLOCK_FREQ/4));
 }
+void setTimerFrequency(int freq){
+    /*Calculate the PR1 value equivalent to the desired timer period, taking
+     * into account the dsPIC operating frequency*/
+    PR1 = (int) ((1.0/freq) * (CLOCK_FREQ/4.0));
+}
 
 /**
  * Initializes LCD
@@ -899,7 +908,7 @@ void reset(){
     menuPointer = 0;
     bpm = 0;
     bpmRatio = 0;
-    bpmStep = 1;
+    bpmStep = 0;
     vol = 0;
     offset = PAGE;
     lastWrite = 0;
