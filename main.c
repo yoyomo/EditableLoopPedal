@@ -67,6 +67,7 @@ unsigned char data8bit, mixedSignal;
 int recording[NUMBER_OF_TRACKS], recorded[NUMBER_OF_TRACKS];
 unsigned char recordedSignal[NUMBER_OF_TRACKS][PAGE];
 int sampleIndex = 0;
+int pageLimit;
 int play = 0;
 int endIndex = SPACE_LIMIT / PAGE;
 int ramPointer;
@@ -259,10 +260,7 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     data12bit = ADCBUF0; 
     data8bit = (unsigned char)(data12bit * (255.0/4095.0));
     //bypass
-    if(selected)
-        mixedSignal = 0;
-    else
-        mixedSignal = data8bit;
+    mixedSignal = data8bit;
      
     //Get BPM value
     bpm = ADCBUF1;
@@ -295,24 +293,22 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
      recorded signal and the input signal*/
         if(play){
             
-            
-            
-            if(selected){
+//            if(selected){
+            if(recorded[menuPointer]==1 && !recording[menuPointer]){
                 mixedSignal = mixedSignal + recordedSignal[menuPointer][sampleIndex];
             }
-            else{
-                int track;
-                for(track = 0; track < NUMBER_OF_TRACKS; track++){
-                    if(recorded[track]==1 && !recording[track]){
-                        mixedSignal = mixedSignal + recordedSignal[track][sampleIndex];
-                    }
-                }
-            }
+//            }
             
         }
         
+        if(ramPointer+1 == endIndex){
+            pageLimit = offset;
+        }
+        else{
+            pageLimit = PAGE;
+        }
         if(bpmStep==2){
-            sampleIndex = (sampleIndex+bpmStep)%PAGE;
+            sampleIndex = (sampleIndex+bpmStep)%pageLimit;
 
         }
         else if(bpmStep==-1){
@@ -320,7 +316,7 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
         }
         else if(bpmStep==0){
             //increment local sample index
-            sampleIndex = (sampleIndex+1)%PAGE;
+            sampleIndex = (sampleIndex+1)%pageLimit;
             setJump = 1;
         }
         
@@ -415,12 +411,10 @@ int main(int argc, char** argv) {
                             recordedSignal[menuPointer][i]);
                     
                 }
-                int track;
-                for(track = 0; track < NUMBER_OF_TRACKS; track++){
-                    if(recorded[track] && !recording[track]){
-                        recordedSignal[track][i] = 
-                            mem_read((ramPointer*PAGE + i) + (track*SPACE_LIMIT));
-                    }
+
+                if(recorded[menuPointer] && !recording[menuPointer]){
+                    recordedSignal[menuPointer][i] = 
+                        mem_read((ramPointer*PAGE + i) + (menuPointer*SPACE_LIMIT));
                 }
                 
             }
