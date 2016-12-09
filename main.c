@@ -68,9 +68,9 @@ int recording[NUMBER_OF_TRACKS], recorded[NUMBER_OF_TRACKS];
 unsigned char recordedSignal[NUMBER_OF_TRACKS][PAGE];
 int sampleIndex = 0;
 int pageLimit;
-int play = 0;
-int endIndex = SPACE_LIMIT / PAGE;
-int ramPointer;
+int play[NUMBER_OF_TRACKS] = {0,0};
+int endIndex[NUMBER_OF_TRACKS] = {SPACE_LIMIT / PAGE,SPACE_LIMIT/PAGE};
+int ramPointer[NUMBER_OF_TRACKS];
 int accessRAM;
 int bpm;
 double bpmRatio;
@@ -95,7 +95,7 @@ int i;
 //memory
 unsigned char throwaway;
 //int track;
-int offset = PAGE;
+int offset[NUMBER_OF_TRACKS] = {PAGE,PAGE};
 int lastWrite;
 int selected;
 
@@ -163,9 +163,9 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
       
     //If the system was recording, set flags to stop recording and play the recorded track.
     if(recording[menuPointer] == 1){
-        if(recorded[0]==0){ // first time recording, reset sample index to replay
-           endIndex = ramPointer + 1;
-           offset = sampleIndex;
+        if(recorded[menuPointer]==0){ // first time recording, reset sample index to replay
+           endIndex[menuPointer] = ramPointer[menuPointer] + 1;
+           offset[menuPointer] = sampleIndex;
         }
         
         accessRAM = 1;
@@ -173,11 +173,16 @@ void __attribute__((interrupt,no_auto_psv)) _INT1Interrupt( void )
     }
     else{
         //if not playing, reset recorded signal
-        if(play==0){
+        if(play[menuPointer]==0){
+            recording[menuPointer] = 0;
             recorded[menuPointer] = 0;
-            sampleIndex = 0;
-            ramPointer = 0;
-            endIndex = (SPACE_LIMIT / PAGE);
+            recWritten[menuPointer] = 1;
+            trackWritten[menuPointer] = 1;
+            emptyWritten[menuPointer] = 0;
+            endIndex[menuPointer] = SPACE_LIMIT / PAGE;
+            offset[menuPointer] = PAGE;
+            ramPointer[menuPointer] = 0;
+            play[menuPointer] = 0;
         }
         //Set flags for recording, and reset the timer
         recording[menuPointer] = 1;
@@ -198,7 +203,7 @@ void __attribute__((interrupt,no_auto_psv)) _INT2Interrupt( void )
     //Toggle the Play/Pause status, and the corresponding LED
     //only if there is something recorded
     if(recorded[menuPointer]==1){
-        play ^= 0x01; 
+        play[menuPointer] ^= 0x01; 
         LATDbits.LATD1 = ~LATDbits.LATD1;
     }
 }
@@ -227,9 +232,9 @@ void __attribute__((interrupt,no_auto_psv)) _T1Interrupt( void )
      and play the recorded signal*/
     if(recording[menuPointer] == 1){
         
-        if(recorded[0]==0){ // first time recording, reset sample index to replay
-           endIndex = ramPointer + 1;
-           offset = sampleIndex;
+        if(recorded[menuPointer]==0){ // first time recording, reset sample index to replay
+           endIndex[menuPointer] = ramPointer[menuPointer] + 1;
+           offset[menuPointer] = sampleIndex;
            
         }
         if(recorded[menuPointer]==0){
@@ -240,10 +245,10 @@ void __attribute__((interrupt,no_auto_psv)) _T1Interrupt( void )
             recording[menuPointer] = 0;
             recorded[menuPointer]= 1;
             sampleIndex = 0;
-            ramPointer = 0;
+            ramPointer[menuPointer] = 0;
             i=0;
             LATDbits.LATD0 = 0;
-            play = 1;
+            play[menuPointer] = 1;
             LATDbits.LATD1 = 1;
         }
     }
@@ -280,7 +285,7 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
     }
     
     //If playing and/or recording update read and/or write variables
-    if(play || recording[menuPointer]){
+    if(play[menuPointer] || recording[menuPointer]){
         //If the system is recording, save the signal to internal memory.
         if(recording[menuPointer]){
 
@@ -291,7 +296,7 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
 
         /*If there is a signal recorded, and the Play button is activated, mix both the
      recorded signal and the input signal*/
-        if(play){
+        if(play[menuPointer]){
             
 //            if(selected){
             if(recorded[menuPointer]==1 && !recording[menuPointer]){
@@ -301,8 +306,8 @@ void __attribute__((interrupt,no_auto_psv)) _ADCInterrupt( void )
             
         }
         
-        if(ramPointer+1 == endIndex){
-            pageLimit = offset;
+        if(ramPointer[menuPointer]+1 == endIndex[menuPointer]){
+            pageLimit = offset[menuPointer];
         }
         else{
             pageLimit = PAGE;
@@ -399,30 +404,30 @@ int main(int argc, char** argv) {
         if(accessRAM){
             int i;
             for(i=0;i<PAGE;i++){
-                if(ramPointer + 1 == endIndex){
-                        if(i>offset) {
+                if(ramPointer[menuPointer] + 1 == endIndex[menuPointer]){
+                        if(i>offset[menuPointer]) {
                             i = PAGE;
                             break;
                         }
                 }
                 if(recording[menuPointer]){
                     
-                    mem_write(((ramPointer*PAGE + i) + (menuPointer*SPACE_LIMIT)),
+                    mem_write(((ramPointer[menuPointer]*PAGE + i) + (menuPointer*SPACE_LIMIT)),
                             recordedSignal[menuPointer][i]);
                     
                 }
 
                 if(recorded[menuPointer] && !recording[menuPointer]){
                     recordedSignal[menuPointer][i] = 
-                        mem_read((ramPointer*PAGE + i) + (menuPointer*SPACE_LIMIT));
+                        mem_read((ramPointer[menuPointer]*PAGE + i) + (menuPointer*SPACE_LIMIT));
                 }
                 
             }
-            ramPointer = (ramPointer + 1) % endIndex;
-            if(ramPointer == 0){
+            ramPointer[menuPointer] = (ramPointer[menuPointer] + 1) % endIndex[menuPointer];
+            if(ramPointer[menuPointer] == 0){
                 sampleIndex = 0;
-                ramPointer = 0;
-                if(recorded[0]==0){
+                ramPointer[menuPointer] = 0;
+                if(recorded[menuPointer]==0){
                     lastWrite = 1;
                 }
             }
@@ -430,9 +435,9 @@ int main(int argc, char** argv) {
                 recording[menuPointer] = 0;
                 recorded[menuPointer]= 1;
                 sampleIndex = 0;
-                ramPointer = 0;
+                ramPointer[menuPointer] = 0;
                 LATDbits.LATD0 = 0;
-                play = 1;
+                play[menuPointer] = 1;
                 LATDbits.LATD1 = 1;
                 lastWrite = 0;
             }
@@ -895,16 +900,14 @@ void configureADC(){
 
 void reset(){
     sampleIndex = 0;
-    play = 0;
-    endIndex = SPACE_LIMIT / PAGE;
-    ramPointer = 0;
+    
+    
     accessRAM = 0;
     menuPointer = 0;
     bpm = 0;
     bpmRatio = 0;
     bpmStep = 0;
     vol = 0;
-    offset = PAGE;
     lastWrite = 0;
 
     int track;
@@ -914,6 +917,10 @@ void reset(){
         recWritten[track] = 1;
         trackWritten[track] = 1;
         emptyWritten[track] = 0;
+        endIndex[track] = SPACE_LIMIT / PAGE;
+        offset[track] = PAGE;
+        ramPointer[track] = 0;
+        play[track] = 0;
     }
 }
   
